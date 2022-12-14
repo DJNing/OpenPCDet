@@ -1,0 +1,20 @@
+2022-12-14 11:36:54,070   INFO  Database filter by min points Vehicle: 1194364 => 1019919
+2022-12-14 11:36:54,216   INFO  Database filter by min points Pedestrian: 1114091 => 943716
+2022-12-14 11:36:54,231   INFO  Database filter by min points Cyclist: 53344 => 47529
+2022-12-14 11:36:54,517   INFO  Database filter by difficulty Vehicle: 1019919 => 1019919
+2022-12-14 11:36:54,745   INFO  Database filter by difficulty Pedestrian: 943716 => 943716
+2022-12-14 11:36:54,759   INFO  Database filter by difficulty Cyclist: 47529 => 47529
+2022-12-14 11:36:55,232   INFO  Loading Waymo dataset
+2022-12-14 11:37:01,808   INFO  Total skipped info 0
+2022-12-14 11:37:01,810   INFO  Total samples for Waymo dataset: 158081
+2022-12-14 11:37:01,816   INFO  Total sampled samples for Waymo dataset: 31617
+2022-12-14 11:38:51,849   INFO  Database filter by min points Vehicle: 1194364 => 1019919
+2022-12-14 11:38:52,052   INFO  Database filter by min points Pedestrian: 1114091 => 943716
+2022-12-14 11:38:52,071   INFO  Database filter by min points Cyclist: 53344 => 47529
+2022-12-14 11:38:52,491   INFO  Database filter by difficulty Vehicle: 1019919 => 1019919
+2022-12-14 11:38:52,815   INFO  Database filter by difficulty Pedestrian: 943716 => 943716
+2022-12-14 11:38:52,830   INFO  Database filter by difficulty Cyclist: 47529 => 47529
+2022-12-14 11:38:53,565   INFO  Loading Waymo dataset
+2022-12-14 11:39:00,320   INFO  Total skipped info 0
+2022-12-14 11:39:00,321   INFO  Total samples for Waymo dataset: 158081
+2022-12-14 11:39:00,328   INFO  Total sampled samples for Waymo dataset: 31617

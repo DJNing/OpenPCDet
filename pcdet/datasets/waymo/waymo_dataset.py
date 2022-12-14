@@ -4,6 +4,7 @@
 # All Rights Reserved.
 
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import pickle
 import copy
 import numpy as np
@@ -18,7 +19,6 @@ from functools import partial
 from ...ops.roiaware_pool3d import roiaware_pool3d_utils
 from ...utils import box_utils, common_utils
 from ..dataset import DatasetTemplate
-
 
 class WaymoDataset(DatasetTemplate):
     def __init__(self, dataset_cfg, class_names, training=True, root_path=None, logger=None):
@@ -708,7 +708,7 @@ def create_waymo_infos(dataset_cfg, class_names, data_path, save_path,
     val_filename = save_path / ('%s_infos_%s.pkl' % (processed_data_tag, val_split))
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-    print('---------------Start to generate data infos---------------')
+    print('---------------Start to generate training data infos---------------')
 
     dataset.set_split(train_split)
     waymo_infos_train = dataset.get_infos(
