@@ -1,0 +1,306 @@
+INFO:root:|---------------------------------------------- The model is PointRCNN --------------------------------------------|
+
+INFO:root:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> The runtime of PointRCNN is 731.9866943359375 ms.
+INFO:root:>>>> Analyzing the memory usage of this model with the batch size 1 <<<<
+INFO:root:## PointRCNN.forward
+
+active_bytes reserved_bytes line code                                                                    
+         all            all                                                                              
+        peak           peak                                                                              
+      16.91M         32.00M    9     def forward(self, batch_dict):                                      
+      52.34M       1004.00M   10         for cur_module in self.module_list:                             
+     542.54M       1004.00M   11             batch_dict = cur_module(batch_dict)                         
+                              12                                                                         
+      50.75M       1004.00M   13         if self.training:                                               
+                              14             loss, tb_dict, disp_dict = self.get_training_loss()         
+                              15                                                                         
+                              16             ret_dict = {                                                
+                              17                 'loss': loss                                            
+                              18             }                                                           
+                              19             return ret_dict, tb_dict, disp_dict                         
+                              20         else:                                                           
+      50.78M       1004.00M   21             pred_dicts, recall_dicts = self.post_processing(batch_dict) 
+      50.75M       1004.00M   22             return pred_dicts, recall_dicts                             
+
+INFO:root:>>>> Now we analyze the average memory usage of this model <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                         code
+0   1.37M        32.0M          9     def forward(self, batch_dict):                             
+1   35.36M       1004.0M        10    for cur_module in self.module_list:                        
+2   522.42M      1004.0M        11    batch_dict = cur_module(batch_dict)                        
+3                               12    NaN                                                        
+4   33.59M       1004.0M        13    if self.training:                                          
+5                               14    loss, tb_dict, disp_dict = self.get_training_loss()        
+6                               15    NaN                                                        
+7                               16    ret_dict = {                                               
+8                               17    'loss': loss                                               
+9                               18    }                                                          
+10                              19    return ret_dict, tb_dict, disp_dict                        
+11                              20    else:                                                      
+12  33.6M        1004.0M        21    pred_dicts, recall_dicts = self.post_processing(batch_dict)
+13  33.59M       1004.0M        22    return pred_dicts, recall_dicts                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| VFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a vfe
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 3D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PointNet2MSG -----------------------
+INFO:root:>>>>>>>>>>>>>> The run time for PointNet2MSG is 37.83440589904785 ms
+INFO:root:>>>>>>>>>>>>>> The runtime of SA modules in PointNet2MSG is 9.929180145263672 ms
+INFO:root:>>>>>>>>>>>>>> The runtime of FP modules in PointNet2MSG is 3.8542747497558594 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                                          code
+0   3.02M        64.0M          56    def forward(self, batch_dict):                                                                                              
+1                               57    """                                                                                                                         
+2                               58    Args:                                                                                                                       
+3                               59    batch_dict:                                                                                                                 
+4                               60    batch_size: int                                                                                                             
+5                               61    vfe_features: (num_voxels, C)                                                                                               
+6                               62    points: (num_points, 4 + C), [batch_idx, x, y, z, ...]                                                                      
+7                               63    Returns:                                                                                                                    
+8                               64    batch_dict:                                                                                                                 
+9                               65    encoded_spconv_tensor: sparse tensor                                                                                        
+10                              66    point_features: (N, C)                                                                                                      
+11                              67    """                                                                                                                         
+12  3.02M        64.0M          68    batch_size = batch_dict['batch_size']                                                                                       
+13  3.02M        64.0M          69    points = batch_dict['points']                                                                                               
+14  4.54M        66.0M          70    batch_idx, xyz, features = self.break_up_pc(points)                                                                         
+15                              71    NaN                                                                                                                         
+16  4.54M        66.0M          72    xyz_batch_cnt = xyz.new_zeros(batch_size).int()                                                                             
+17  4.54M        66.0M          73    for bs_idx in range(batch_size):                                                                                            
+18  5.05M        66.0M          74    xyz_batch_cnt[bs_idx] = (batch_idx == bs_idx).sum()                                                                         
+19                              75    NaN                                                                                                                         
+20  4.53M        66.0M          76    assert xyz_batch_cnt.min() == xyz_batch_cnt.max()                                                                           
+21  4.54M        66.0M          77    xyz = xyz.view(batch_size, -1, 3)                                                                                           
+22  4.99M        66.0M          78    features = features.view(batch_size, -1, features.shape[-1]).permute(0, 2, 1).contiguous() if features is not None else None
+23                              79    NaN                                                                                                                         
+24  4.54M        66.0M          80    l_xyz, l_features = [xyz], [features]                                                                                       
+25  2068.48M     2170.88M       81    for i in range(len(self.SA_modules)):                                                                                       
+26  2068.48M     2170.88M       82    li_xyz, li_features = self.SA_modules[i](l_xyz[i], l_features[i])                                                           
+27  2068.48M     2170.88M       83    l_xyz.append(li_xyz)                                                                                                        
+28  2068.48M     2170.88M       84    l_features.append(li_features)                                                                                              
+29                              85    NaN                                                                                                                         
+30  2478.08M     2775.04M       86    for i in range(-1, -(len(self.FP_modules) + 1), -1):                                                                        
+31  2304.0M      2641.92M       87    l_features[i - 1] = self.FP_modules[i](                                                                                     
+32  2519.04M     2775.04M       88    l_xyz[i - 1], l_xyz[i], l_features[i - 1], l_features[i]                                                                    
+33                              89    ) # (B, C, N)                                                                                                               
+34                              90    NaN                                                                                                                         
+35  2519.04M     2775.04M       91    point_features = l_features[0].permute(0, 2, 1).contiguous() # (B, N, C)                                                    
+36  2519.04M     2775.04M       92    batch_dict['point_features'] = point_features.view(-1, point_features.shape[-1])                                            
+37  2508.8M      2775.04M       93    batch_dict['point_coords'] = torch.cat((batch_idx[:, None].float(), l_xyz[0].view(-1, 3)), dim=1)                           
+38  2508.8M      2775.04M       94    return batch_dict                                                                                                           
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Map2Bev Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not rely on BEV
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| PFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a pfe
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 2D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a 2D backbone
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Dense Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a dense head.
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Point Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PointHeadBox -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for PointHeadBox is 10.184764862060547 ms
+INFO:root:************** Analyzing memory usage of PointHeadBox**************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                               code
+0   440.32M      4751.36M       71    def forward(self, batch_dict):                                                   
+1                               72    """                                                                              
+2                               73    Args:                                                                            
+3                               74    batch_dict:                                                                      
+4                               75    batch_size:                                                                      
+5                               76    point_features: (N1 + N2 + N3 + ..., C) or (B, N, C)                             
+6                               77    point_features_before_fusion: (N1 + N2 + N3 + ..., C)                            
+7                               78    point_coords: (N1 + N2 + N3 + ..., 4) [bs_idx, x, y, z]                          
+8                               79    point_labels (optional): (N1 + N2 + N3 + ...)                                    
+9                               80    gt_boxes (optional): (B, M, 8)                                                   
+10                              81    Returns:                                                                         
+11                              82    batch_dict:                                                                      
+12                              83    point_cls_scores: (N1 + N2 + N3 + ..., 1)                                        
+13                              84    point_part_offset: (N1 + N2 + N3 + ..., 3)                                       
+14                              85    """                                                                              
+15  440.32M      4751.36M       86    if self.model_cfg.get('USE_POINT_FEATURES_BEFORE_FUSION', False):                
+16                              87    point_features = batch_dict['point_features_before_fusion']                      
+17                              88    else:                                                                            
+18  440.32M      4751.36M       89    point_features = batch_dict['point_features']                                    
+19  747.52M      5058.56M       90    point_cls_preds = self.cls_layers(point_features) # (total_points, num_class)    
+20  983.04M      5294.08M       91    point_box_preds = self.box_layers(point_features) # (total_points, box_code_size)
+21                              92    NaN                                                                              
+22  921.6M       5294.08M       93    point_cls_preds_max, _ = point_cls_preds.max(dim=-1)                             
+23  921.6M       5294.08M       94    batch_dict['point_cls_scores'] = torch.sigmoid(point_cls_preds_max)              
+24                              95    NaN                                                                              
+25  921.6M       5294.08M       96    ret_dict = {'point_cls_preds': point_cls_preds,                                  
+26  921.6M       5294.08M       97    'point_box_preds': point_box_preds}                                              
+27  921.6M       5294.08M       98    if self.training:                                                                
+28                              99    targets_dict = self.assign_targets(batch_dict)                                   
+29                              100   ret_dict['point_cls_labels'] = targets_dict['point_cls_labels']                  
+30                              101   ret_dict['point_box_labels'] = targets_dict['point_box_labels']                  
+31                              102   NaN                                                                              
+32  921.6M       5294.08M       103   if not self.training or self.predict_boxes_when_training:                        
+33  921.6M       5294.08M       104   point_cls_preds, point_box_preds = self.generate_predicted_boxes(                
+34  921.6M       5294.08M       105   points=batch_dict['point_coords'][:, 1:4],                                       
+35  931.84M      5294.08M       106   point_cls_preds=point_cls_preds, point_box_preds=point_box_preds                 
+36                              107   )                                                                                
+37  931.84M      5294.08M       108   batch_dict['batch_cls_preds'] = point_cls_preds                                  
+38  931.84M      5294.08M       109   batch_dict['batch_box_preds'] = point_box_preds                                  
+39  931.84M      5294.08M       110   batch_dict['batch_index'] = batch_dict['point_coords'][:, 0]                     
+40  931.84M      5294.08M       111   batch_dict['cls_preds_normalized'] = False                                       
+41                              112   NaN                                                                              
+42  931.84M      5294.08M       113   self.forward_ret_dict = ret_dict                                                 
+43                              114   NaN                                                                              
+44  921.6M       5294.08M       115   return batch_dict                                                                
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| ROI Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PointRCNNHead -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for PointRCNNHead is 53.04551124572754 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of PointRCNNHead**************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                         code
+0   921.6M       5242.88M       132   def forward(self, batch_dict):                                                                             
+1                               133   """                                                                                                        
+2                               134   Args:                                                                                                      
+3                               135   batch_dict:                                                                                                
+4                               136   NaN                                                                                                        
+5                               137   Returns:                                                                                                   
+6                               138   NaN                                                                                                        
+7                               139   """                                                                                                        
+8   921.6M       5242.88M       140   targets_dict = self.proposal_layer(                                                                        
+9   931.84M      5242.88M       141   batch_dict, nms_config=self.model_cfg.NMS_CONFIG['TRAIN' if self.training else 'TEST']                     
+10                              142   )                                                                                                          
+11  921.6M       5242.88M       143   if self.training:                                                                                          
+12                              144   targets_dict = self.assign_targets(batch_dict)                                                             
+13                              145   batch_dict['rois'] = targets_dict['rois']                                                                  
+14                              146   batch_dict['roi_labels'] = targets_dict['roi_labels']                                                      
+15                              147   NaN                                                                                                        
+16  993.28M      5263.36M       148   pooled_features = self.roipool3d_gpu(batch_dict) # (total_rois, num_sampled_points, 3 + C)                 
+17                              149   NaN                                                                                                        
+18  962.56M      5263.36M       150   xyz_input = pooled_features[..., 0:self.num_prefix_channels].transpose(1, 2).unsqueeze(dim=3).contiguous() 
+19  1003.52M     5416.96M       151   xyz_features = self.xyz_up_layer(xyz_input)                                                                
+20  1003.52M     5416.96M       152   point_features = pooled_features[..., self.num_prefix_channels:].transpose(1, 2).unsqueeze(dim=3)          
+21  1054.72M     5416.96M       153   merged_features = torch.cat((xyz_features, point_features), dim=1)                                         
+22  1085.44M     5550.08M       154   merged_features = self.merge_down_layer(merged_features)                                                   
+23                              155   NaN                                                                                                        
+24  1075.2M      5550.08M       156   l_xyz, l_features = [pooled_features[..., 0:3].contiguous()], [merged_features.squeeze(dim=3).contiguous()]
+25                              157   NaN                                                                                                        
+26  2068.48M     6430.72M       158   for i in range(len(self.SA_modules)):                                                                      
+27  2048.0M      6430.72M       159   li_xyz, li_features = self.SA_modules[i](l_xyz[i], l_features[i])                                          
+28  2068.48M     6430.72M       160   l_xyz.append(li_xyz)                                                                                       
+29  2068.48M     6430.72M       161   l_features.append(li_features)                                                                             
+30                              162   NaN                                                                                                        
+31  2068.48M     6430.72M       163   shared_features = l_features[-1] # (total_rois, num_features, 1)                                           
+32  1935.36M     6563.84M       164   rcnn_cls = self.cls_layers(shared_features).transpose(1, 2).contiguous().squeeze(dim=1) # (B, 1 or 2)      
+33  1935.36M     6563.84M       165   rcnn_reg = self.reg_layers(shared_features).transpose(1, 2).contiguous().squeeze(dim=1) # (B, C)           
+34                              166   NaN                                                                                                        
+35  2068.48M     6563.84M       167   if not self.training:                                                                                      
+36  2068.48M     6563.84M       168   batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(                                          
+37  2068.48M     6563.84M       169   batch_size=batch_dict['batch_size'], rois=batch_dict['rois'], cls_preds=rcnn_cls, box_preds=rcnn_reg       
+38                              170   )                                                                                                          
+39  2068.48M     6563.84M       171   batch_dict['batch_cls_preds'] = batch_cls_preds                                                            
+40  2068.48M     6563.84M       172   batch_dict['batch_box_preds'] = batch_box_preds                                                            
+41  2058.24M     6563.84M       173   batch_dict['cls_preds_normalized'] = False                                                                 
+42                              174   else:                                                                                                      
+43                              175   targets_dict['rcnn_cls'] = rcnn_cls                                                                        
+44                              176   targets_dict['rcnn_reg'] = rcnn_reg                                                                        
+45                              177   NaN                                                                                                        
+46                              178   self.forward_ret_dict = targets_dict                                                                       
+47  2058.24M     6563.84M       179   return batch_dict                                                                                          
+INFO:root:>>>>>>>>>>>>>> The runtime for The Proposal Layer in PointRCNNHead is 0.00037384033203125 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of PointRCNN Proposal Layer **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                    code
+0   2027.52M     6430.72M       45    @torch.no_grad()                                                                                      
+1                               46    def proposal_layer(self, batch_dict, nms_config):                                                     
+2                               47    """                                                                                                   
+3                               48    Args:                                                                                                 
+4                               49    batch_dict:                                                                                           
+5                               50    batch_size:                                                                                           
+6                               51    batch_cls_preds: (B, num_boxes, num_classes | 1) or (N1+N2+..., num_classes | 1)                      
+7                               52    batch_box_preds: (B, num_boxes, 7+C) or (N1+N2+..., 7+C)                                              
+8                               53    cls_preds_normalized: indicate whether batch_cls_preds is normalized                                  
+9                               54    batch_index: optional (N1+N2+...)                                                                     
+10                              55    nms_config:                                                                                           
+11                              56    NaN                                                                                                   
+12                              57    Returns:                                                                                              
+13                              58    batch_dict:                                                                                           
+14                              59    rois: (B, num_rois, 7+C)                                                                              
+15                              60    roi_scores: (B, num_rois)                                                                             
+16                              61    roi_labels: (B, num_rois)                                                                             
+17                              62    NaN                                                                                                   
+18                              63    """                                                                                                   
+19                              64    if batch_dict.get('rois', None) is not None:                                                          
+20                              65    return batch_dict                                                                                     
+21                              66    NaN                                                                                                   
+22                              67    batch_size = batch_dict['batch_size']                                                                 
+23                              68    batch_box_preds = batch_dict['batch_box_preds']                                                       
+24                              69    batch_cls_preds = batch_dict['batch_cls_preds']                                                       
+25                              70    rois = batch_box_preds.new_zeros((batch_size, nms_config.NMS_POST_MAXSIZE, batch_box_preds.shape[-1]))
+26                              71    roi_scores = batch_box_preds.new_zeros((batch_size, nms_config.NMS_POST_MAXSIZE))                     
+27                              72    roi_labels = batch_box_preds.new_zeros((batch_size, nms_config.NMS_POST_MAXSIZE), dtype=torch.long)   
+28                              73    NaN                                                                                                   
+29                              74    for index in range(batch_size):                                                                       
+30                              75    if batch_dict.get('batch_index', None) is not None:                                                   
+31                              76    assert batch_cls_preds.shape.__len__() == 2                                                           
+32                              77    batch_mask = (batch_dict['batch_index'] == index)                                                     
+33                              78    else:                                                                                                 
+34                              79    assert batch_dict['batch_cls_preds'].shape.__len__() == 3                                             
+35                              80    batch_mask = index                                                                                    
+36                              81    box_preds = batch_box_preds[batch_mask]                                                               
+37                              82    cls_preds = batch_cls_preds[batch_mask]                                                               
+38                              83    NaN                                                                                                   
+39                              84    cur_roi_scores, cur_roi_labels = torch.max(cls_preds, dim=1)                                          
+40                              85    NaN                                                                                                   
+41                              86    if nms_config.MULTI_CLASSES_NMS:                                                                      
+42                              87    raise NotImplementedError                                                                             
+43                              88    else:                                                                                                 
+44                              89    selected, selected_scores = class_agnostic_nms(                                                       
+45                              90    box_scores=cur_roi_scores, box_preds=box_preds, nms_config=nms_config                                 
+46                              91    )                                                                                                     
+47                              92    NaN                                                                                                   
+48                              93    rois[index, :len(selected), :] = box_preds[selected]                                                  
+49                              94    roi_scores[index, :len(selected)] = cur_roi_scores[selected]                                          
+50                              95    roi_labels[index, :len(selected)] = cur_roi_labels[selected]                                          
+51                              96    NaN                                                                                                   
+52                              97    batch_dict['rois'] = rois                                                                             
+53                              98    batch_dict['roi_scores'] = roi_scores                                                                 
+54                              99    batch_dict['roi_labels'] = roi_labels + 1                                                             
+55                              100   batch_dict['has_class_labels'] = True if batch_cls_preds.shape[-1] > 1 else False                     
+56                              101   batch_dict.pop('batch_index', None)                                                                   
+57                              102   return batch_dict                                                                                     
+INFO:root:
+
+INFO:root:------------------------------------------------------ Finish profiling ------------------------------------------------------

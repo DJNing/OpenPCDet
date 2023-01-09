@@ -60,6 +60,39 @@ class VoxelGeneratorWrapper():
         return voxels, coordinates, num_points
 
 
+class RangeGeneratorWrapper(VoxelGeneratorWrapper):
+    def __init__(self, vsize_xyz, coors_range_xyz, num_point_features, max_num_points_per_voxel, max_num_voxels):
+        super().__init__(vsize_xyz, coors_range_xyz, num_point_features, max_num_points_per_voxel, max_num_voxels)
+        
+    def generate(self, points):
+        
+        # convert to polar coordinate
+        # points: [N, 3]
+        r = np.sqrt(points[:, 0]**2 + points[:, 1]**2 + points[:, 2]**2)
+        theta = np.arccos(points[:, 2]/r)
+        phi = np.arctan2(points[:,1], points[:,0])
+        new_points = np.zeros_like(points)
+        new_points[:, 0] = r
+        new_points[:, 1] = theta
+        new_points[:, 2] = phi
+        
+        if self.spconv_ver == 1:
+            voxel_output = self._voxel_generator.generate(new_points)
+            if isinstance(voxel_output, dict):
+                voxels, coordinates, num_points = \
+                    voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
+            else:
+                voxels, coordinates, num_points = voxel_output
+        else:
+            assert tv is not None, f"Unexpected error, library: 'cumm' wasn't imported properly."
+            voxel_output = self._voxel_generator.point_to_voxel(tv.from_numpy(new_points))
+            tv_voxels, tv_coordinates, tv_num_points = voxel_output
+            # make copy with numpy(), since numpy_view() will disappear as soon as the generator is deleted
+            voxels = tv_voxels.numpy()
+            coordinates = tv_coordinates.numpy()
+            num_points = tv_num_points.numpy()
+        return voxels, coordinates, num_points
+
 class DataProcessor(object):
     def __init__(self, processor_configs, point_cloud_range, training, num_point_features):
         self.point_cloud_range = point_cloud_range
@@ -109,6 +142,7 @@ class DataProcessor(object):
             grid_size = (self.point_cloud_range[3:6] - self.point_cloud_range[0:3]) / np.array(config.VOXEL_SIZE)
             self.grid_size = np.round(grid_size).astype(np.int64)
             self.voxel_size = config.VOXEL_SIZE
+            self.use_polar = config.get('USE_POLAR', False)
             return partial(self.transform_points_to_voxels_placeholder, config=config)
         
         return data_dict
@@ -120,6 +154,7 @@ class DataProcessor(object):
             self.voxel_size = config.VOXEL_SIZE
             # just bind the config, we will create the VoxelGeneratorWrapper later,
             # to avoid pickling issues in multiprocess spawn
+            self.use_polar = config.get('USE_POLAR', False)
             return partial(self.transform_points_to_voxels, config=config)
 
         if self.voxel_generator is None:
@@ -137,6 +172,17 @@ class DataProcessor(object):
 
         if not data_dict['use_lead_xyz']:
             voxels = voxels[..., 3:]  # remove xyz in voxels(N, 3)
+        print(points.shape)
+        if self.use_polar:
+            r = np.sqrt(points[:, 0]**2 + points[:, 1]**2 + points[:, 2]**2)
+            theta = np.arccos(points[:, 2]/r)
+            phi = np.arctan2(points[:,1], points[:,0])
+            new_points = np.zeros_like(points)
+            new_points[:, 0] = r
+            new_points[:, 1] = theta
+            new_points[:, 2] = phi
+            data_dict['polar'] = new_points
+            print('polar shape is: ', new_points.shape)
 
         data_dict['voxels'] = voxels
         data_dict['voxel_coords'] = coordinates

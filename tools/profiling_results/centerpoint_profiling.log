@@ -1,0 +1,1044 @@
+INFO:root:|---------------------------------------------- The model is CenterPoint --------------------------------------------|
+
+INFO:root:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> The runtime of CenterPoint is 68.88585662841797 ms.
+INFO:root:>>>> Analyzing the memory usage of this model with the batch size 1 <<<<
+INFO:root:## CenterPoint.forward
+
+active_bytes reserved_bytes line code                                                                    
+         all            all                                                                              
+        peak           peak                                                                              
+      52.39M         74.00M    9     def forward(self, batch_dict):                                      
+     306.77M        524.00M   10         for cur_module in self.module_list:                             
+     400.20M        524.00M   11             batch_dict = cur_module(batch_dict)                         
+                              12                                                                         
+     306.77M        524.00M   13         if self.training:                                               
+                              14             loss, tb_dict, disp_dict = self.get_training_loss()         
+                              15                                                                         
+                              16             ret_dict = {                                                
+                              17                 'loss': loss                                            
+                              18             }                                                           
+                              19             return ret_dict, tb_dict, disp_dict                         
+                              20         else:                                                           
+     306.83M        524.00M   21             pred_dicts, recall_dicts = self.post_processing(batch_dict) 
+     306.77M        524.00M   22             return pred_dicts, recall_dicts                             
+
+INFO:root:>>>> Now we analyze the average memory usage of this model <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                         code
+0   12.19M       74.0M          9     def forward(self, batch_dict):                             
+1   270.02M      524.0M         10    for cur_module in self.module_list:                        
+2   364.41M      524.0M         11    batch_dict = cur_module(batch_dict)                        
+3                               12    NaN                                                        
+4   270.02M      524.0M         13    if self.training:                                          
+5                               14    loss, tb_dict, disp_dict = self.get_training_loss()        
+6                               15    NaN                                                        
+7                               16    ret_dict = {                                               
+8                               17    'loss': loss                                               
+9                               18    }                                                          
+10                              19    return ret_dict, tb_dict, disp_dict                        
+11                              20    else:                                                      
+12  270.02M      524.0M         21    pred_dicts, recall_dicts = self.post_processing(batch_dict)
+13  270.02M      524.0M         22    return pred_dicts, recall_dicts                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| VFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on MeanVFE -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for MeanVFE is 1.058816909790039 ms
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                         code
+0   23.95M       54.0M          14    def forward(self, batch_dict, **kwargs):                                                   
+1                               15    """                                                                                        
+2                               16    Args:                                                                                      
+3                               17    batch_dict:                                                                                
+4                               18    voxels: (num_voxels, max_points_per_voxel, C)                                              
+5                               19    voxel_num_points: optional (num_voxels)                                                    
+6                               20    **kwargs:                                                                                  
+7                               21    NaN                                                                                        
+8                               22    Returns:                                                                                   
+9                               23    vfe_features: (num_voxels, C)                                                              
+10                              24    """                                                                                        
+11  23.95M       54.0M          25    voxel_features, voxel_num_points = batch_dict['voxels'], batch_dict['voxel_num_points']    
+12  25.4M        54.0M          26    points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)                            
+13  25.69M       54.0M          27    normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
+14  27.15M       54.0M          28    points_mean = points_mean / normalizer                                                     
+15  25.69M       54.0M          29    batch_dict['voxel_features'] = points_mean.contiguous()                                    
+16                              30    NaN                                                                                        
+17  25.69M       54.0M          31    return batch_dict                                                                          
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 3D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on VoxelResBackBone8x -----------------------
+INFO:root:>>>>>>>>>>>>>> The run time for VoxelResBackBone8x is 57.58023262023926 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv1 in VoxelResBackBone8x is 2.218484878540039 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv2 in VoxelResBackBone8x is 5.5141448974609375 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv3 in VoxelResBackBone8x is 6.023168563842773 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv4 in VoxelResBackBone8x is 5.192041397094727 ms
+INFO:root:>>>>>>>>>>>>>> The average running time of the combined convolutinal blocks is 14.22739028930664 ms 
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                     code
+0   25.4M        54.0M          241   def forward(self, batch_dict):                                                         
+1                               242   """                                                                                    
+2                               243   Args:                                                                                  
+3                               244   batch_dict:                                                                            
+4                               245   batch_size: int                                                                        
+5                               246   vfe_features: (num_voxels, C)                                                          
+6                               247   voxel_coords: (num_voxels, 4), [batch_idx, z_idx, y_idx, x_idx]                        
+7                               248   Returns:                                                                               
+8                               249   batch_dict:                                                                            
+9                               250   encoded_spconv_tensor: sparse tensor                                                   
+10                              251   """                                                                                    
+11  25.4M        54.0M          252   voxel_features, voxel_coords = batch_dict['voxel_features'], batch_dict['voxel_coords']
+12  25.4M        54.0M          253   batch_size = batch_dict['batch_size']                                                  
+13  25.4M        54.0M          254   input_sp_tensor = spconv.SparseConvTensor(                                             
+14  25.4M        54.0M          255   features=voxel_features,                                                               
+15  26.86M       54.0M          256   indices=voxel_coords.int(),                                                            
+16  26.86M       54.0M          257   spatial_shape=self.sparse_shape,                                                       
+17  26.86M       54.0M          258   batch_size=batch_size                                                                  
+18                              259   )                                                                                      
+19  49.59M       94.0M          260   x = self.conv_input(input_sp_tensor)                                                   
+20                              261   NaN                                                                                    
+21  95.57M       134.0M         262   x_conv1 = self.conv1(x)                                                                
+22  274.71M      330.0M         263   x_conv2 = self.conv2(x_conv1)                                                          
+23  454.71M      532.0M         264   x_conv3 = self.conv3(x_conv2)                                                          
+24  595.96M      674.0M         265   x_conv4 = self.conv4(x_conv3)                                                          
+25                              266   NaN                                                                                    
+26                              267   # for detection head                                                                   
+27                              268   # [200, 176, 5] -> [200, 176, 2]                                                       
+28  623.26M      688.0M         269   out = self.conv_out(x_conv4)                                                           
+29                              270   NaN                                                                                    
+30  603.82M      688.0M         271   batch_dict.update({                                                                    
+31  603.82M      688.0M         272   'encoded_spconv_tensor': out,                                                          
+32  603.82M      688.0M         273   'encoded_spconv_tensor_stride': 8                                                      
+33                              274   })                                                                                     
+34  603.82M      688.0M         275   batch_dict.update({                                                                    
+35  603.82M      688.0M         276   'multi_scale_3d_features': {                                                           
+36  603.82M      688.0M         277   'x_conv1': x_conv1,                                                                    
+37  603.82M      688.0M         278   'x_conv2': x_conv2,                                                                    
+38  603.82M      688.0M         279   'x_conv3': x_conv3,                                                                    
+39  603.82M      688.0M         280   'x_conv4': x_conv4,                                                                    
+40                              281   }                                                                                      
+41                              282   })                                                                                     
+42                              283   NaN                                                                                    
+43  603.82M      688.0M         284   batch_dict.update({                                                                    
+44  603.82M      688.0M         285   'multi_scale_3d_strides': {                                                            
+45  603.82M      688.0M         286   'x_conv1': 1,                                                                          
+46  603.82M      688.0M         287   'x_conv2': 2,                                                                          
+47  603.82M      688.0M         288   'x_conv3': 4,                                                                          
+48  603.82M      688.0M         289   'x_conv4': 8,                                                                          
+49                              290   }                                                                                      
+50                              291   })                                                                                     
+51                              292   NaN                                                                                    
+52  603.82M      688.0M         293   return batch_dict                                                                      
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Map2Bev Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on HeightCompression -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for HeightCompression is 2.7217864990234375 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                code
+0   603.82M      672.0M         10    def forward(self, batch_dict):                                                    
+1                               11    """                                                                               
+2                               12    Args:                                                                             
+3                               13    batch_dict:                                                                       
+4                               14    encoded_spconv_tensor: sparse tensor                                              
+5                               15    Returns:                                                                          
+6                               16    batch_dict:                                                                       
+7                               17    spatial_features:                                                                 
+8                               18    NaN                                                                               
+9                               19    """                                                                               
+10  603.82M      672.0M         20    encoded_spconv_tensor = batch_dict['encoded_spconv_tensor']                       
+11  677.45M      744.0M         21    spatial_features = encoded_spconv_tensor.dense()                                  
+12  640.28M      744.0M         22    N, C, D, H, W = spatial_features.shape                                            
+13  640.28M      744.0M         23    spatial_features = spatial_features.view(N, C * D, H, W)                          
+14  640.28M      744.0M         24    batch_dict['spatial_features'] = spatial_features                                 
+15  640.28M      744.0M         25    batch_dict['spatial_features_stride'] = batch_dict['encoded_spconv_tensor_stride']
+16  640.28M      744.0M         26    return batch_dict                                                                 
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| PFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a pfe
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 2D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on BaseBEVBackbone -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for BaseBEVBackbone is 12.1612548828125 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                  code
+0   640.28M      708.0M         81    def forward(self, data_dict):                       
+1                               82    """                                                 
+2                               83    Args:                                               
+3                               84    data_dict:                                          
+4                               85    spatial_features                                    
+5                               86    Returns:                                            
+6                               87    """                                                 
+7   640.28M      708.0M         88    spatial_features = data_dict['spatial_features']    
+8   640.28M      708.0M         89    ups = []                                            
+9   640.28M      708.0M         90    ret_dict = {}                                       
+10  640.28M      708.0M         91    x = spatial_features                                
+11  1146.88M     1310.72M       92    for i in range(len(self.blocks)):                   
+12  1085.44M     1187.84M       93    x = self.blocks[i](x)                               
+13                              94    NaN                                                 
+14  1064.96M     1187.84M       95    stride = int(spatial_features.shape[2] / x.shape[2])
+15  1064.96M     1187.84M       96    ret_dict['spatial_features_%dx' % stride] = x       
+16  1064.96M     1187.84M       97    if len(self.deblocks) > 0:                          
+17  1177.6M      1310.72M       98    ups.append(self.deblocks[i](x))                     
+18                              99    else:                                               
+19                              100   ups.append(x)                                       
+20                              101   NaN                                                 
+21  1146.88M     1310.72M       102   if len(ups) > 1:                                    
+22  1218.56M     1382.4M        103   x = torch.cat(ups, dim=1)                           
+23                              104   elif len(ups) == 1:                                 
+24                              105   x = ups[0]                                          
+25                              106   NaN                                                 
+26  1218.56M     1382.4M        107   if len(self.deblocks) > len(self.blocks):           
+27                              108   x = self.deblocks[-1](x)                            
+28                              109   NaN                                                 
+29  1218.56M     1382.4M        110   data_dict['spatial_features_2d'] = x                
+30                              111   NaN                                                 
+31  1218.56M     1382.4M        112   return data_dict                                    
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Dense Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on CenterHead -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for CenterHead is 7.835626602172852 ms
+INFO:root:>>>>>>>>>>>>>> The total runtime of separateHeads is 2.720355987548828 ms
+INFO:root:>>>>>>>>>>>>>> Number of separated_heads in the heads_list: 1
+INFO:root:>>>>>>>>>>>>>> The average runtime of each separateHead is 2.720355987548828 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                code
+0   1218.56M     1320.96M       324   def forward(self, data_dict):                                                                     
+1   1218.56M     1320.96M       325   spatial_features_2d = data_dict['spatial_features_2d']                                            
+2   1239.04M     1341.44M       326   x = self.shared_conv(spatial_features_2d)                                                         
+3                               327   NaN                                                                                               
+4   1228.8M      1341.44M       328   pred_dicts = []                                                                                   
+5   1320.96M     1464.32M       329   for head in self.heads_list:                                                                      
+6   1331.2M      1464.32M       330   pred_dicts.append(head(x))                                                                        
+7                               331   NaN                                                                                               
+8   1320.96M     1464.32M       332   if self.training:                                                                                 
+9                               333   target_dict = self.assign_targets(                                                                
+10                              334   data_dict['gt_boxes'], feature_map_size=spatial_features_2d.size()[2:],                           
+11                              335   feature_map_stride=data_dict.get('spatial_features_2d_strides', None)                             
+12                              336   )                                                                                                 
+13                              337   self.forward_ret_dict['target_dicts'] = target_dict                                               
+14                              338   NaN                                                                                               
+15  1320.96M     1464.32M       339   self.forward_ret_dict['pred_dicts'] = pred_dicts                                                  
+16                              340   NaN                                                                                               
+17  1320.96M     1464.32M       341   if not self.training or self.predict_boxes_when_training:                                         
+18  1320.96M     1464.32M       342   pred_dicts = self.generate_predicted_boxes(                                                       
+19  1320.96M     1464.32M       343   data_dict['batch_size'], pred_dicts                                                               
+20                              344   )                                                                                                 
+21                              345   NaN                                                                                               
+22  1320.96M     1464.32M       346   if self.predict_boxes_when_training:                                                              
+23                              347   rois, roi_scores, roi_labels = self.reorder_rois_for_refining(data_dict['batch_size'], pred_dicts)
+24                              348   data_dict['rois'] = rois                                                                          
+25                              349   data_dict['roi_scores'] = roi_scores                                                              
+26                              350   data_dict['roi_labels'] = roi_labels                                                              
+27                              351   data_dict['has_class_labels'] = True                                                              
+28                              352   else:                                                                                             
+29  1320.96M     1464.32M       353   data_dict['final_box_dicts'] = pred_dicts                                                         
+30                              354   NaN                                                                                               
+31  1320.96M     1464.32M       355   return data_dict                                                                                  
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Point Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a point head
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| ROI Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a ROI head
+INFO:root:
+
+INFO:root:------------------------------------------------------ Finish profiling ------------------------------------------------------
+INFO:root:|---------------------------------------------- The model is PVRCNN --------------------------------------------|
+
+INFO:root:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> The runtime of PVRCNN is 303.5435485839844 ms.
+INFO:root:>>>> Analyzing the memory usage of this model with the batch size 1 <<<<
+INFO:root:## PVRCNN.forward
+
+active_bytes reserved_bytes line code                                                                    
+         all            all                                                                              
+        peak           peak                                                                              
+      70.70M         80.00M    9     def forward(self, batch_dict):                                      
+     335.99M          2.19G   10         for cur_module in self.module_list:                             
+       1.74G          2.19G   11             batch_dict = cur_module(batch_dict)                         
+                              12                                                                         
+     330.35M          2.19G   13         if self.training:                                               
+                              14             loss, tb_dict, disp_dict = self.get_training_loss()         
+                              15                                                                         
+                              16             ret_dict = {                                                
+                              17                 'loss': loss                                            
+                              18             }                                                           
+                              19             return ret_dict, tb_dict, disp_dict                         
+                              20         else:                                                           
+     330.47M          2.19G   21             pred_dicts, recall_dicts = self.post_processing(batch_dict) 
+     330.36M          2.19G   22             return pred_dicts, recall_dicts                             
+
+INFO:root:>>>> Now we analyze the average memory usage of this model <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                         code
+0   12.12M       80.0M          9     def forward(self, batch_dict):                             
+1   278.25M      2242.56M       10    for cur_module in self.module_list:                        
+2   1587.2M      2242.56M       11    batch_dict = cur_module(batch_dict)                        
+3                               12    NaN                                                        
+4   272.61M      2242.56M       13    if self.training:                                          
+5                               14    loss, tb_dict, disp_dict = self.get_training_loss()        
+6                               15    NaN                                                        
+7                               16    ret_dict = {                                               
+8                               17    'loss': loss                                               
+9                               18    }                                                          
+10                              19    return ret_dict, tb_dict, disp_dict                        
+11                              20    else:                                                      
+12  272.62M      2242.56M       21    pred_dicts, recall_dicts = self.post_processing(batch_dict)
+13  272.62M      2242.56M       22    return pred_dicts, recall_dicts                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| VFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on MeanVFE -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for MeanVFE is 1.1429786682128906 ms
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                         code
+0   21.69M       130.0M         14    def forward(self, batch_dict, **kwargs):                                                   
+1                               15    """                                                                                        
+2                               16    Args:                                                                                      
+3                               17    batch_dict:                                                                                
+4                               18    voxels: (num_voxels, max_points_per_voxel, C)                                              
+5                               19    voxel_num_points: optional (num_voxels)                                                    
+6                               20    **kwargs:                                                                                  
+7                               21    NaN                                                                                        
+8                               22    Returns:                                                                                   
+9                               23    vfe_features: (num_voxels, C)                                                              
+10                              24    """                                                                                        
+11  21.69M       130.0M         25    voxel_features, voxel_num_points = batch_dict['voxels'], batch_dict['voxel_num_points']    
+12  22.86M       130.0M         26    points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)                            
+13  23.15M       130.0M         27    normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
+14  24.6M        130.0M         28    points_mean = points_mean / normalizer                                                     
+15  23.43M       130.0M         29    batch_dict['voxel_features'] = points_mean.contiguous()                                    
+16                              30    NaN                                                                                        
+17  23.43M       130.0M         31    return batch_dict                                                                          
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 3D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on VoxelBackBone8x -----------------------
+INFO:root:>>>>>>>>>>>>>> The run time for VoxelBackBone8x is 38.378238677978516 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv1 in VoxelBackBone8x is 0.3299713134765625 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv2 in VoxelBackBone8x is 4.621028900146484 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv3 in VoxelBackBone8x is 4.090547561645508 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv4 in VoxelBackBone8x is 2.6624202728271484 ms
+INFO:root:>>>>>>>>>>>>>> The average running time of the combined convolutinal blocks is 8.281230926513672 ms 
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                     code
+0   23.14M       130.0M         128   def forward(self, batch_dict):                                                         
+1                               129   """                                                                                    
+2                               130   Args:                                                                                  
+3                               131   batch_dict:                                                                            
+4                               132   batch_size: int                                                                        
+5                               133   vfe_features: (num_voxels, C)                                                          
+6                               134   voxel_coords: (num_voxels, 4), [batch_idx, z_idx, y_idx, x_idx]                        
+7                               135   Returns:                                                                               
+8                               136   batch_dict:                                                                            
+9                               137   encoded_spconv_tensor: sparse tensor                                                   
+10                              138   """                                                                                    
+11  23.14M       130.0M         139   voxel_features, voxel_coords = batch_dict['voxel_features'], batch_dict['voxel_coords']
+12  23.14M       130.0M         140   batch_size = batch_dict['batch_size']                                                  
+13  23.14M       130.0M         141   input_sp_tensor = spconv.SparseConvTensor(                                             
+14  23.14M       130.0M         142   features=voxel_features,                                                               
+15  24.81M       130.0M         143   indices=voxel_coords.int(),                                                            
+16  24.81M       130.0M         144   spatial_shape=self.sparse_shape,                                                       
+17  24.81M       130.0M         145   batch_size=batch_size                                                                  
+18                              146   )                                                                                      
+19                              147   NaN                                                                                    
+20  46.55M       130.0M         148   x = self.conv_input(input_sp_tensor)                                                   
+21                              149   NaN                                                                                    
+22  55.84M       130.0M         150   x_conv1 = self.conv1(x)                                                                
+23  180.98M      268.0M         151   x_conv2 = self.conv2(x_conv1)                                                          
+24  299.94M      426.0M         152   x_conv3 = self.conv3(x_conv2)                                                          
+25  341.57M      448.0M         153   x_conv4 = self.conv4(x_conv3)                                                          
+26                              154   NaN                                                                                    
+27                              155   # for detection head                                                                   
+28                              156   # [200, 176, 5] -> [200, 176, 2]                                                       
+29  368.64M      484.0M         157   out = self.conv_out(x_conv4)                                                           
+30                              158   NaN                                                                                    
+31  357.93M      484.0M         159   batch_dict.update({                                                                    
+32  357.93M      484.0M         160   'encoded_spconv_tensor': out,                                                          
+33  357.93M      484.0M         161   'encoded_spconv_tensor_stride': 8                                                      
+34                              162   })                                                                                     
+35  357.93M      484.0M         163   batch_dict.update({                                                                    
+36  357.93M      484.0M         164   'multi_scale_3d_features': {                                                           
+37  357.93M      484.0M         165   'x_conv1': x_conv1,                                                                    
+38  357.93M      484.0M         166   'x_conv2': x_conv2,                                                                    
+39  357.93M      484.0M         167   'x_conv3': x_conv3,                                                                    
+40  357.93M      484.0M         168   'x_conv4': x_conv4,                                                                    
+41                              169   }                                                                                      
+42                              170   })                                                                                     
+43  357.93M      484.0M         171   batch_dict.update({                                                                    
+44  357.93M      484.0M         172   'multi_scale_3d_strides': {                                                            
+45  357.93M      484.0M         173   'x_conv1': 1,                                                                          
+46  357.93M      484.0M         174   'x_conv2': 2,                                                                          
+47  357.93M      484.0M         175   'x_conv3': 4,                                                                          
+48  357.93M      484.0M         176   'x_conv4': 8,                                                                          
+49                              177   }                                                                                      
+50                              178   })                                                                                     
+51                              179   NaN                                                                                    
+52  357.93M      484.0M         180   return batch_dict                                                                      
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Map2Bev Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on HeightCompression -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for HeightCompression is 2.299785614013672 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                code
+0   357.93M      472.0M         10    def forward(self, batch_dict):                                                    
+1                               11    """                                                                               
+2                               12    Args:                                                                             
+3                               13    batch_dict:                                                                       
+4                               14    encoded_spconv_tensor: sparse tensor                                              
+5                               15    Returns:                                                                          
+6                               16    batch_dict:                                                                       
+7                               17    spatial_features:                                                                 
+8                               18    NaN                                                                               
+9                               19    """                                                                               
+10  357.93M      472.0M         20    encoded_spconv_tensor = batch_dict['encoded_spconv_tensor']                       
+11  429.66M      544.0M         21    spatial_features = encoded_spconv_tensor.dense()                                  
+12  394.18M      544.0M         22    N, C, D, H, W = spatial_features.shape                                            
+13  394.18M      544.0M         23    spatial_features = spatial_features.view(N, C * D, H, W)                          
+14  394.18M      544.0M         24    batch_dict['spatial_features'] = spatial_features                                 
+15  394.18M      544.0M         25    batch_dict['spatial_features_stride'] = batch_dict['encoded_spconv_tensor_stride']
+16  394.18M      544.0M         26    return batch_dict                                                                 
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| PFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on VoxelSetAbstraction -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for VoxelSetAbstraction is 224.5781421661377 ms
+INFO:root:*************************** The overall memory analyze of VoxelSetAbstraction ***************************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                     code
+0   394.18M      508.0M         334   def forward(self, batch_dict):                                                                         
+1                               335   """                                                                                                    
+2                               336   Args:                                                                                                  
+3                               337   batch_dict:                                                                                            
+4                               338   batch_size:                                                                                            
+5                               339   keypoints: (B, num_keypoints, 3)                                                                       
+6                               340   multi_scale_3d_features: {                                                                             
+7                               341   'x_conv4': ...                                                                                         
+8                               342   }                                                                                                      
+9                               343   points: optional (N, 1 + 3 + C) [bs_idx, x, y, z, ...]                                                 
+10                              344   spatial_features: optional                                                                             
+11                              345   spatial_features_stride: optional                                                                      
+12                              346   NaN                                                                                                    
+13                              347   Returns:                                                                                               
+14                              348   point_features: (N, C)                                                                                 
+15                              349   point_coords: (N, 4)                                                                                   
+16                              350   NaN                                                                                                    
+17                              351   """                                                                                                    
+18  397.48M      510.0M         352   keypoints = self.get_sampled_points(batch_dict)                                                        
+19                              353   NaN                                                                                                    
+20  394.24M      510.0M         354   point_features_list = []                                                                               
+21  394.24M      510.0M         355   if 'bev' in self.model_cfg.FEATURES_SOURCE:                                                            
+22  394.24M      510.0M         356   point_bev_features = self.interpolate_from_bev_features(                                               
+23  394.24M      510.0M         357   keypoints, batch_dict['spatial_features'], batch_dict['batch_size'],                                   
+24  400.32M      530.0M         358   bev_stride=batch_dict['spatial_features_stride']                                                       
+25                              359   )                                                                                                      
+26  398.04M      530.0M         360   point_features_list.append(point_bev_features)                                                         
+27                              361   NaN                                                                                                    
+28  398.04M      530.0M         362   batch_size = batch_dict['batch_size']                                                                  
+29                              363   NaN                                                                                                    
+30  398.1M       530.0M         364   new_xyz = keypoints[:, 1:4].contiguous()                                                               
+31  398.1M       530.0M         365   new_xyz_batch_cnt = new_xyz.new_zeros(batch_size).int()                                                
+32  398.1M       530.0M         366   for k in range(batch_size):                                                                            
+33  398.13M      530.0M         367   new_xyz_batch_cnt[k] = (keypoints[:, 0] == k).sum()                                                    
+34                              368   NaN                                                                                                    
+35  398.1M       530.0M         369   if 'raw_points' in self.model_cfg.FEATURES_SOURCE:                                                     
+36  398.1M       530.0M         370   raw_points = batch_dict['points']                                                                      
+37                              371   NaN                                                                                                    
+38  398.1M       530.0M         372   pooled_features = self.aggregate_keypoint_features_from_one_source(                                    
+39  398.1M       530.0M         373   batch_size=batch_size, aggregate_func=self.SA_rawpoints,                                               
+40  398.1M       530.0M         374   xyz=raw_points[:, 1:4],                                                                                
+41  399.67M      530.0M         375   xyz_features=raw_points[:, 4:].contiguous() if raw_points.shape[1] > 4 else None,                      
+42  399.67M      530.0M         376   xyz_bs_idxs=raw_points[:, 0],                                                                          
+43  399.67M      530.0M         377   new_xyz=new_xyz, new_xyz_batch_cnt=new_xyz_batch_cnt,                                                  
+44  399.67M      530.0M         378   filter_neighbors_with_roi=self.model_cfg.SA_LAYER['raw_points'].get('FILTER_NEIGHBOR_WITH_ROI', False),
+45  399.67M      530.0M         379   radius_of_neighbor=self.model_cfg.SA_LAYER['raw_points'].get('RADIUS_OF_NEIGHBOR_WITH_ROI', None),     
+46  441.15M      532.0M         380   rois=batch_dict.get('rois', None)                                                                      
+47                              381   )                                                                                                      
+48  434.17M      532.0M         382   point_features_list.append(pooled_features)                                                            
+49                              383   NaN                                                                                                    
+50  929.46M      1095.68M       384   for k, src_name in enumerate(self.SA_layer_names):                                                     
+51  687.05M      830.0M         385   cur_coords = batch_dict['multi_scale_3d_features'][src_name].indices                                   
+52  687.05M      830.0M         386   cur_features = batch_dict['multi_scale_3d_features'][src_name].features.contiguous()                   
+53                              387   NaN                                                                                                    
+54  687.05M      830.0M         388   xyz = common_utils.get_voxel_centers(                                                                  
+55  687.05M      830.0M         389   cur_coords[:, 1:4], downsample_times=self.downsample_times_map[src_name],                              
+56  686.16M      830.0M         390   voxel_size=self.voxel_size, point_cloud_range=self.point_cloud_range                                   
+57                              391   )                                                                                                      
+58                              392   NaN                                                                                                    
+59  687.45M      830.0M         393   pooled_features = self.aggregate_keypoint_features_from_one_source(                                    
+60  687.45M      830.0M         394   batch_size=batch_size, aggregate_func=self.SA_layers[k],                                               
+61  687.45M      830.0M         395   xyz=xyz.contiguous(), xyz_features=cur_features, xyz_bs_idxs=cur_coords[:, 0],                         
+62  687.45M      830.0M         396   new_xyz=new_xyz, new_xyz_batch_cnt=new_xyz_batch_cnt,                                                  
+63  687.45M      830.0M         397   filter_neighbors_with_roi=self.model_cfg.SA_LAYER[src_name].get('FILTER_NEIGHBOR_WITH_ROI', False),    
+64  687.45M      830.0M         398   radius_of_neighbor=self.model_cfg.SA_LAYER[src_name].get('RADIUS_OF_NEIGHBOR_WITH_ROI', None),         
+65  961.9M       1095.68M       399   rois=batch_dict.get('rois', None)                                                                      
+66                              400   )                                                                                                      
+67                              401   NaN                                                                                                    
+68  929.46M      1095.68M       402   point_features_list.append(pooled_features)                                                            
+69                              403   NaN                                                                                                    
+70  941.44M      1095.68M       404   point_features = torch.cat(point_features_list, dim=-1)                                                
+71                              405   NaN                                                                                                    
+72  941.44M      1095.68M       406   batch_dict['point_features_before_fusion'] = point_features.view(-1, point_features.shape[-1])         
+73  945.68M      1095.68M       407   point_features = self.vsa_point_feature_fusion(point_features.view(-1, point_features.shape[-1]))      
+74                              408   NaN                                                                                                    
+75  947.68M      1095.68M       409   batch_dict['point_features'] = point_features # (BxN, C)                                               
+76  947.68M      1095.68M       410   batch_dict['point_coords'] = keypoints # (BxN, 4)                                                      
+77  947.68M      1095.68M       411   return batch_dict                                                                                      
+INFO:root:>>>>>>>>>>>>>> The total time for the grouping process in VoxelSetAbstraction is 2.840757369995117 ms.
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of grouping process **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                                 code
+0   936.76M      1044.48M       227   def get_sampled_points(self, batch_dict):                                                                          
+1                               228   """                                                                                                                
+2                               229   Args:                                                                                                              
+3                               230   batch_dict:                                                                                                        
+4                               231   NaN                                                                                                                
+5                               232   Returns:                                                                                                           
+6                               233   keypoints: (N1 + N2 + ..., 4), where 4 indicates [bs_idx, x, y, z]                                                 
+7                               234   """                                                                                                                
+8   936.76M      1044.48M       235   batch_size = batch_dict['batch_size']                                                                              
+9   936.76M      1044.48M       236   if self.model_cfg.POINT_SOURCE == 'raw_points':                                                                    
+10  936.76M      1044.48M       237   src_points = batch_dict['points'][:, 1:4]                                                                          
+11  935.8M       1044.48M       238   batch_indices = batch_dict['points'][:, 0].long()                                                                  
+12                              239   elif self.model_cfg.POINT_SOURCE == 'voxel_centers':                                                               
+13                              240   src_points = common_utils.get_voxel_centers(                                                                       
+14                              241   batch_dict['voxel_coords'][:, 1:4],                                                                                
+15                              242   downsample_times=1,                                                                                                
+16                              243   voxel_size=self.voxel_size,                                                                                        
+17                              244   point_cloud_range=self.point_cloud_range                                                                           
+18                              245   )                                                                                                                  
+19                              246   batch_indices = batch_dict['voxel_coords'][:, 0].long()                                                            
+20                              247   else:                                                                                                              
+21                              248   raise NotImplementedError                                                                                          
+22  935.8M       1044.48M       249   keypoints_list = []                                                                                                
+23  944.35M      1044.48M       250   for bs_idx in range(batch_size):                                                                                   
+24  945.92M      1044.48M       251   bs_mask = (batch_indices == bs_idx)                                                                                
+25  943.47M      1044.48M       252   sampled_points = src_points[bs_mask].unsqueeze(dim=0) # (1, N, 3)                                                  
+26  944.43M      1044.48M       253   if self.model_cfg.SAMPLE_METHOD == 'FPS':                                                                          
+27  944.43M      1044.48M       254   cur_pt_idxs = pointnet2_stack_utils.farthest_point_sample(                                                         
+28  943.93M      1044.48M       255   sampled_points[:, :, 0:3].contiguous(), self.model_cfg.NUM_KEYPOINTS                                               
+29                              256   ).long()                                                                                                           
+30                              257   NaN                                                                                                                
+31  944.4M       1044.48M       258   if sampled_points.shape[1] < self.model_cfg.NUM_KEYPOINTS:                                                         
+32                              259   times = int(self.model_cfg.NUM_KEYPOINTS / sampled_points.shape[1]) + 1                                            
+33                              260   non_empty = cur_pt_idxs[0, :sampled_points.shape[1]]                                                               
+34                              261   cur_pt_idxs[0] = non_empty.repeat(times)[:self.model_cfg.NUM_KEYPOINTS]                                            
+35                              262   NaN                                                                                                                
+36  944.35M      1044.48M       263   keypoints = sampled_points[0][cur_pt_idxs[0]].unsqueeze(dim=0)                                                     
+37                              264   NaN                                                                                                                
+38                              265   elif self.model_cfg.SAMPLE_METHOD == 'SPC':                                                                        
+39                              266   cur_keypoints = self.sectorized_proposal_centric_sampling(                                                         
+40                              267   roi_boxes=batch_dict['rois'][bs_idx], points=sampled_points[0]                                                     
+41                              268   )                                                                                                                  
+42                              269   bs_idxs = cur_keypoints.new_ones(cur_keypoints.shape[0]) * bs_idx                                                  
+43                              270   keypoints = torch.cat((bs_idxs[:, None], cur_keypoints), dim=1)                                                    
+44                              271   else:                                                                                                              
+45                              272   raise NotImplementedError                                                                                          
+46                              273   NaN                                                                                                                
+47  944.35M      1044.48M       274   keypoints_list.append(keypoints)                                                                                   
+48                              275   NaN                                                                                                                
+49  944.31M      1044.48M       276   keypoints = torch.cat(keypoints_list, dim=0) # (B, M, 3) or (N1 + N2 + ..., 4)                                     
+50  944.31M      1044.48M       277   if len(keypoints.shape) == 3:                                                                                      
+51  944.27M      1044.48M       278   batch_idx = torch.arange(batch_size, device=keypoints.device).view(-1, 1).repeat(1, keypoints.shape[1]).view(-1, 1)
+52  944.2M       1044.48M       279   keypoints = torch.cat((batch_idx.float(), keypoints.view(-1, 3)), dim=1)                                           
+53                              280   NaN                                                                                                                
+54  944.26M      1044.48M       281   return keypoints                                                                                                   
+INFO:root:>>>>>>>>>>>>>> The total time of getting bev features is 97.60642051696777 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of getting bev features **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                       code
+0   936.7M       1044.48M       176   def interpolate_from_bev_features(self, keypoints, bev_features, batch_size, bev_stride):
+1                               177   """                                                                                      
+2                               178   Args:                                                                                    
+3                               179   keypoints: (N1 + N2 + ..., 4)                                                            
+4                               180   bev_features: (B, C, H, W)                                                               
+5                               181   batch_size:                                                                              
+6                               182   bev_stride:                                                                              
+7                               183   NaN                                                                                      
+8                               184   Returns:                                                                                 
+9                               185   point_bev_features: (N1 + N2 + ..., C)                                                   
+10                              186   """                                                                                      
+11  936.67M      1044.48M       187   x_idxs = (keypoints[:, 1] - self.point_cloud_range[0]) / self.voxel_size[0]              
+12  936.65M      1044.48M       188   y_idxs = (keypoints[:, 2] - self.point_cloud_range[1]) / self.voxel_size[1]              
+13                              189   NaN                                                                                      
+14  936.65M      1044.48M       190   x_idxs = x_idxs / bev_stride                                                             
+15  936.65M      1044.48M       191   y_idxs = y_idxs / bev_stride                                                             
+16                              192   NaN                                                                                      
+17  936.67M      1044.48M       193   point_bev_features_list = []                                                             
+18  942.69M      1064.96M       194   for k in range(batch_size):                                                              
+19  946.9M       1044.48M       195   bs_mask = (keypoints[:, 0] == k)                                                         
+20                              196   NaN                                                                                      
+21  946.86M      1044.48M       197   cur_x_idxs = x_idxs[bs_mask]                                                             
+22  946.84M      1044.48M       198   cur_y_idxs = y_idxs[bs_mask]                                                             
+23  946.87M      1044.48M       199   cur_bev_features = bev_features[k].permute(1, 2, 0) # (H, W, C)                          
+24  949.02M      1064.96M       200   point_bev_features = bilinear_interpolate_torch(cur_bev_features, cur_x_idxs, cur_y_idxs)
+25  942.69M      1064.96M       201   point_bev_features_list.append(point_bev_features)                                       
+26                              202   NaN                                                                                      
+27  948.93M      1064.96M       203   point_bev_features = torch.cat(point_bev_features_list, dim=0) # (N1 + N2 + ..., C)      
+28  948.93M      1064.96M       204   return point_bev_features                                                                
+INFO:root:>>>>>>>>>>>>>> The total runtime for pooling features from raw points is 40.70305824279785 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of getting raw_points features **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                code
+0   946.94M      1044.48M       283   @staticmethod                                                                                     
+1                               284   def aggregate_keypoint_features_from_one_source(                                                  
+2                               285   batch_size, aggregate_func, xyz, xyz_features, xyz_bs_idxs, new_xyz, new_xyz_batch_cnt,           
+3                               286   filter_neighbors_with_roi=False, radius_of_neighbor=None, num_max_points_of_part=200000, rois=None
+4                               287   ):                                                                                                
+5                               288   """                                                                                               
+6                               289   NaN                                                                                               
+7                               290   Args:                                                                                             
+8                               291   aggregate_func:                                                                                   
+9                               292   xyz: (N, 3)                                                                                       
+10                              293   xyz_features: (N, C)                                                                              
+11               1044.48        294   xyz_bs_idxs: (N)                                                                                  
+12               1044.48        295   new_xyz: (M, 3)                                                                                   
+13                              296   new_xyz_batch_cnt: (batch_size), [N1, N2, ...]                                                    
+14               1044.48        297   NaN                                                                                               
+15               1044.48        298   filter_neighbors_with_roi: True/False                                                             
+16                              299   radius_of_neighbor: float                                                                         
+17               1044.48        300   num_max_points_of_part: int                                                                       
+18               1064.96        301   rois: (batch_size, num_rois, 7 + C)                                                               
+19               1044.48        302   Returns:                                                                                          
+20                              303   NaN                                                                                               
+21               1044.48        304   """                                                                                               
+22  946.84M      1044.48M       305   xyz_batch_cnt = xyz.new_zeros(batch_size).int()                                                   
+23  946.87M      1044.48M       306   if filter_neighbors_with_roi:                                                                     
+24               1064.96        307   point_features = torch.cat((xyz, xyz_features), dim=-1) if xyz_features is not None else xyz      
+25               1064.96        308   point_features_list = []                                                                          
+26                              309   for bs_idx in range(batch_size):                                                                  
+27               1064.96        310   bs_mask = (xyz_bs_idxs == bs_idx)                                                                 
+28               1064.96        311   _, valid_mask = sample_points_with_roi(                                                           
+29                              312   rois=rois[bs_idx], points=xyz[bs_mask],                                                           
+30                              313   sample_radius_with_roi=radius_of_neighbor, num_max_points_of_part=num_max_points_of_part,         
+31                              314   )                                                                                                 
+32                              315   point_features_list.append(point_features[bs_mask][valid_mask])                                   
+33                              316   xyz_batch_cnt[bs_idx] = valid_mask.sum()                                                          
+34                              317   NaN                                                                                               
+35                              318   valid_point_features = torch.cat(point_features_list, dim=0)                                      
+36                              319   xyz = valid_point_features[:, 0:3]                                                                
+37                              320   xyz_features = valid_point_features[:, 3:] if xyz_features is not None else None                  
+38                              321   else:                                                                                             
+39                              322   for bs_idx in range(batch_size):                                                                  
+40                              323   xyz_batch_cnt[bs_idx] = (xyz_bs_idxs == bs_idx).sum()                                             
+41                              324   NaN                                                                                               
+42                              325   pooled_points, pooled_features = aggregate_func(                                                  
+43                              326   xyz=xyz.contiguous(),                                                                             
+44                              327   xyz_batch_cnt=xyz_batch_cnt,                                                                      
+45                              328   new_xyz=new_xyz,                                                                                  
+46                              329   new_xyz_batch_cnt=new_xyz_batch_cnt,                                                              
+47                              330   features=xyz_features.contiguous(),                                                               
+48                              331   )                                                                                                 
+49                              332   return pooled_features                                                                            
+INFO:root:>>>>>>>>>>>>>> The total time of mlp x_conv3 is 0.02404189109802246 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of getting features from the mlp x_conv3 **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                code
+0   972.8M       1085.44M       283   @staticmethod                                                                                     
+1                               284   def aggregate_keypoint_features_from_one_source(                                                  
+2                               285   batch_size, aggregate_func, xyz, xyz_features, xyz_bs_idxs, new_xyz, new_xyz_batch_cnt,           
+3                               286   filter_neighbors_with_roi=False, radius_of_neighbor=None, num_max_points_of_part=200000, rois=None
+4                               287   ):                                                                                                
+5                               288   """                                                                                               
+6                               289   NaN                                                                                               
+7                               290   Args:                                                                                             
+8                               291   aggregate_func:                                                                                   
+9                               292   xyz: (N, 3)                                                                                       
+10                              293   xyz_features: (N, C)                                                                              
+11                              294   xyz_bs_idxs: (N)                                                                                  
+12                              295   new_xyz: (M, 3)                                                                                   
+13                              296   new_xyz_batch_cnt: (batch_size), [N1, N2, ...]                                                    
+14                              297   NaN                                                                                               
+15                              298   filter_neighbors_with_roi: True/False                                                             
+16                              299   radius_of_neighbor: float                                                                         
+17                              300   num_max_points_of_part: int                                                                       
+18                              301   rois: (batch_size, num_rois, 7 + C)                                                               
+19                              302   Returns:                                                                                          
+20                              303   NaN                                                                                               
+21                              304   """                                                                                               
+22  972.8M       1085.44M       305   xyz_batch_cnt = xyz.new_zeros(batch_size).int()                                                   
+23  972.8M       1085.44M       306   if filter_neighbors_with_roi:                                                                     
+24                              307   point_features = torch.cat((xyz, xyz_features), dim=-1) if xyz_features is not None else xyz      
+25                              308   point_features_list = []                                                                          
+26                              309   for bs_idx in range(batch_size):                                                                  
+27                              310   bs_mask = (xyz_bs_idxs == bs_idx)                                                                 
+28                              311   _, valid_mask = sample_points_with_roi(                                                           
+29                              312   rois=rois[bs_idx], points=xyz[bs_mask],                                                           
+30                              313   sample_radius_with_roi=radius_of_neighbor, num_max_points_of_part=num_max_points_of_part,         
+31                              314   )                                                                                                 
+32                              315   point_features_list.append(point_features[bs_mask][valid_mask])                                   
+33                              316   xyz_batch_cnt[bs_idx] = valid_mask.sum()                                                          
+34                              317   NaN                                                                                               
+35                              318   valid_point_features = torch.cat(point_features_list, dim=0)                                      
+36                              319   xyz = valid_point_features[:, 0:3]                                                                
+37                              320   xyz_features = valid_point_features[:, 3:] if xyz_features is not None else None                  
+38                              321   else:                                                                                             
+39  972.8M       1085.44M       322   for bs_idx in range(batch_size):                                                                  
+40  972.8M       1085.44M       323   xyz_batch_cnt[bs_idx] = (xyz_bs_idxs == bs_idx).sum()                                             
+41                              324   NaN                                                                                               
+42  972.8M       1085.44M       325   pooled_points, pooled_features = aggregate_func(                                                  
+43  972.8M       1085.44M       326   xyz=xyz.contiguous(),                                                                             
+44  972.8M       1085.44M       327   xyz_batch_cnt=xyz_batch_cnt,                                                                      
+45  972.8M       1085.44M       328   new_xyz=new_xyz,                                                                                  
+46  972.8M       1085.44M       329   new_xyz_batch_cnt=new_xyz_batch_cnt,                                                              
+47  1259.52M     1382.4M        330   features=xyz_features.contiguous(),                                                               
+48                              331   )                                                                                                 
+49  1228.8M      1382.4M        332   return pooled_features                                                                            
+INFO:root:>>>>>>>>>>>>>> The total time of mlp x_conv4 is 0.014209985733032227 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of getting features from the mlp x_conv4 **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                code
+0   1228.8M      1331.2M        283   @staticmethod                                                                                     
+1                               284   def aggregate_keypoint_features_from_one_source(                                                  
+2                               285   batch_size, aggregate_func, xyz, xyz_features, xyz_bs_idxs, new_xyz, new_xyz_batch_cnt,           
+3                               286   filter_neighbors_with_roi=False, radius_of_neighbor=None, num_max_points_of_part=200000, rois=None
+4                               287   ):                                                                                                
+5                               288   """                                                                                               
+6                               289   NaN                                                                                               
+7                               290   Args:                                                                                             
+8                               291   aggregate_func:                                                                                   
+9                               292   xyz: (N, 3)                                                                                       
+10                              293   xyz_features: (N, C)                                                                              
+11                              294   xyz_bs_idxs: (N)                                                                                  
+12                              295   new_xyz: (M, 3)                                                                                   
+13                              296   new_xyz_batch_cnt: (batch_size), [N1, N2, ...]                                                    
+14                              297   NaN                                                                                               
+15                              298   filter_neighbors_with_roi: True/False                                                             
+16                              299   radius_of_neighbor: float                                                                         
+17                              300   num_max_points_of_part: int                                                                       
+18                              301   rois: (batch_size, num_rois, 7 + C)                                                               
+19                              302   Returns:                                                                                          
+20                              303   NaN                                                                                               
+21                              304   """                                                                                               
+22  1228.8M      1331.2M        305   xyz_batch_cnt = xyz.new_zeros(batch_size).int()                                                   
+23  1228.8M      1331.2M        306   if filter_neighbors_with_roi:                                                                     
+24                              307   point_features = torch.cat((xyz, xyz_features), dim=-1) if xyz_features is not None else xyz      
+25                              308   point_features_list = []                                                                          
+26                              309   for bs_idx in range(batch_size):                                                                  
+27                              310   bs_mask = (xyz_bs_idxs == bs_idx)                                                                 
+28                              311   _, valid_mask = sample_points_with_roi(                                                           
+29                              312   rois=rois[bs_idx], points=xyz[bs_mask],                                                           
+30                              313   sample_radius_with_roi=radius_of_neighbor, num_max_points_of_part=num_max_points_of_part,         
+31                              314   )                                                                                                 
+32                              315   point_features_list.append(point_features[bs_mask][valid_mask])                                   
+33                              316   xyz_batch_cnt[bs_idx] = valid_mask.sum()                                                          
+34                              317   NaN                                                                                               
+35                              318   valid_point_features = torch.cat(point_features_list, dim=0)                                      
+36                              319   xyz = valid_point_features[:, 0:3]                                                                
+37                              320   xyz_features = valid_point_features[:, 3:] if xyz_features is not None else None                  
+38                              321   else:                                                                                             
+39  1228.8M      1331.2M        322   for bs_idx in range(batch_size):                                                                  
+40  1228.8M      1331.2M        323   xyz_batch_cnt[bs_idx] = (xyz_bs_idxs == bs_idx).sum()                                             
+41                              324   NaN                                                                                               
+42  1228.8M      1331.2M        325   pooled_points, pooled_features = aggregate_func(                                                  
+43  1228.8M      1331.2M        326   xyz=xyz.contiguous(),                                                                             
+44  1228.8M      1331.2M        327   xyz_batch_cnt=xyz_batch_cnt,                                                                      
+45  1228.8M      1331.2M        328   new_xyz=new_xyz,                                                                                  
+46  1228.8M      1331.2M        329   new_xyz_batch_cnt=new_xyz_batch_cnt,                                                              
+47  1505.28M     1628.16M       330   features=xyz_features.contiguous(),                                                               
+48                              331   )                                                                                                 
+49  1484.8M      1628.16M       332   return pooled_features                                                                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 2D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on BaseBEVBackbone -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for BaseBEVBackbone is 18.056631088256836 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                  code
+0   936.76M      1044.48M       81    def forward(self, data_dict):                       
+1                               82    """                                                 
+2                               83    Args:                                               
+3                               84    data_dict:                                          
+4                               85    spatial_features                                    
+5                               86    Returns:                                            
+6                               87    """                                                 
+7   936.76M      1044.48M       88    spatial_features = data_dict['spatial_features']    
+8   936.76M      1044.48M       89    ups = []                                            
+9   936.76M      1044.48M       90    ret_dict = {}                                       
+10  936.76M      1044.48M       91    x = spatial_features                                
+11  1443.84M     1648.64M       92    for i in range(len(self.blocks)):                   
+12  1382.4M      1525.76M       93    x = self.blocks[i](x)                               
+13                              94    NaN                                                 
+14  1361.92M     1525.76M       95    stride = int(spatial_features.shape[2] / x.shape[2])
+15  1361.92M     1525.76M       96    ret_dict['spatial_features_%dx' % stride] = x       
+16  1361.92M     1525.76M       97    if len(self.deblocks) > 0:                          
+17  1474.56M     1648.64M       98    ups.append(self.deblocks[i](x))                     
+18                              99    else:                                               
+19                              100   ups.append(x)                                       
+20                              101   NaN                                                 
+21  1443.84M     1648.64M       102   if len(ups) > 1:                                    
+22  1505.28M     1720.32M       103   x = torch.cat(ups, dim=1)                           
+23                              104   elif len(ups) == 1:                                 
+24                              105   x = ups[0]                                          
+25                              106   NaN                                                 
+26  1505.28M     1720.32M       107   if len(self.deblocks) > len(self.blocks):           
+27                              108   x = self.deblocks[-1](x)                            
+28                              109   NaN                                                 
+29  1505.28M     1720.32M       110   data_dict['spatial_features_2d'] = x                
+30                              111   NaN                                                 
+31  1505.28M     1720.32M       112   return data_dict                                    
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Dense Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on AnchorHeadSingle -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for AnchorHeadSingle is 5.205392837524414 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                   code
+0   1505.28M     1658.88M       41    def forward(self, data_dict):                                        
+1   1505.28M     1658.88M       42    spatial_features_2d = data_dict['spatial_features_2d']               
+2                               43    NaN                                                                  
+3   1505.28M     1781.76M       44    cls_preds = self.conv_cls(spatial_features_2d)                       
+4   1392.64M     1781.76M       45    box_preds = self.conv_box(spatial_features_2d)                       
+5                               46    NaN                                                                  
+6   1525.76M     1781.76M       47    cls_preds = cls_preds.permute(0, 2, 3, 1).contiguous() # [N, H, W, C]
+7   1515.52M     1781.76M       48    box_preds = box_preds.permute(0, 2, 3, 1).contiguous() # [N, H, W, C]
+8                               49    NaN                                                                  
+9   1515.52M     1781.76M       50    self.forward_ret_dict['cls_preds'] = cls_preds                       
+10  1515.52M     1781.76M       51    self.forward_ret_dict['box_preds'] = box_preds                       
+11                              52    NaN                                                                  
+12  1505.28M     1781.76M       53    if self.conv_dir_cls is not None:                                    
+13  1515.52M     1781.76M       54    dir_cls_preds = self.conv_dir_cls(spatial_features_2d)               
+14  1505.28M     1781.76M       55    dir_cls_preds = dir_cls_preds.permute(0, 2, 3, 1).contiguous()       
+15  1515.52M     1781.76M       56    self.forward_ret_dict['dir_cls_preds'] = dir_cls_preds               
+16                              57    else:                                                                
+17                              58    dir_cls_preds = None                                                 
+18                              59    NaN                                                                  
+19  1515.52M     1781.76M       60    if self.training:                                                    
+20                              61    targets_dict = self.assign_targets(                                  
+21                              62    gt_boxes=data_dict['gt_boxes']                                       
+22                              63    )                                                                    
+23                              64    self.forward_ret_dict.update(targets_dict)                           
+24                              65    NaN                                                                  
+25  1515.52M     1781.76M       66    if not self.training or self.predict_boxes_when_training:            
+26  1515.52M     1781.76M       67    batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(    
+27  1515.52M     1781.76M       68    batch_size=data_dict['batch_size'],                                  
+28  1525.76M     1792.0M        69    cls_preds=cls_preds, box_preds=box_preds, dir_cls_preds=dir_cls_preds
+29                              70    )                                                                    
+30  1515.52M     1792.0M        71    data_dict['batch_cls_preds'] = batch_cls_preds                       
+31  1515.52M     1792.0M        72    data_dict['batch_box_preds'] = batch_box_preds                       
+32  1515.52M     1792.0M        73    data_dict['cls_preds_normalized'] = False                            
+33                              74    NaN                                                                  
+34  1515.52M     1792.0M        75    return data_dict                                                     
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Point Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PointHeadSimple -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for PointHeadSimple is 2.6841163635253906 ms
+INFO:root:************** Analyzing memory usage of PointHeadSimple**************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                           code
+0   1515.52M     1658.88M       58    def forward(self, batch_dict):                                               
+1                               59    """                                                                          
+2                               60    Args:                                                                        
+3                               61    batch_dict:                                                                  
+4                               62    batch_size:                                                                  
+5                               63    point_features: (N1 + N2 + N3 + ..., C) or (B, N, C)                         
+6                               64    point_features_before_fusion: (N1 + N2 + N3 + ..., C)                        
+7                               65    point_coords: (N1 + N2 + N3 + ..., 4) [bs_idx, x, y, z]                      
+8                               66    point_labels (optional): (N1 + N2 + N3 + ...)                                
+9                               67    gt_boxes (optional): (B, M, 8)                                               
+10                              68    Returns:                                                                     
+11                              69    batch_dict:                                                                  
+12                              70    point_cls_scores: (N1 + N2 + N3 + ..., 1)                                    
+13                              71    point_part_offset: (N1 + N2 + N3 + ..., 3)                                   
+14                              72    """                                                                          
+15  1515.52M     1658.88M       73    if self.model_cfg.get('USE_POINT_FEATURES_BEFORE_FUSION', False):            
+16  1515.52M     1658.88M       74    point_features = batch_dict['point_features_before_fusion']                  
+17                              75    else:                                                                        
+18                              76    point_features = batch_dict['point_features']                                
+19  1536.0M      1679.36M       77    point_cls_preds = self.cls_layers(point_features) # (total_points, num_class)
+20                              78    NaN                                                                          
+21                              79    ret_dict = {                                                                 
+22  1546.24M     1679.36M       80    'point_cls_preds': point_cls_preds,                                          
+23                              81    }                                                                            
+24                              82    NaN                                                                          
+25  1546.24M     1679.36M       83    point_cls_scores = torch.sigmoid(point_cls_preds)                            
+26  1546.24M     1679.36M       84    batch_dict['point_cls_scores'], _ = point_cls_scores.max(dim=-1)             
+27                              85    NaN                                                                          
+28  1546.24M     1679.36M       86    if self.training:                                                            
+29                              87    targets_dict = self.assign_targets(batch_dict)                               
+30                              88    ret_dict['point_cls_labels'] = targets_dict['point_cls_labels']              
+31  1546.24M     1679.36M       89    self.forward_ret_dict = ret_dict                                             
+32                              90    NaN                                                                          
+33  1546.24M     1679.36M       91    return batch_dict                                                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| ROI Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PVRCNNHead -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for PVRCNNHead is 27.147293090820312 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of PVRCNNHead**************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                   code
+0   1546.24M     1679.36M       134   def forward(self, batch_dict):                                                                       
+1                               135   """                                                                                                  
+2                               136   :param input_data: input dict                                                                        
+3                               137   :return:                                                                                             
+4                               138   """                                                                                                  
+5                               139   NaN                                                                                                  
+6   1546.24M     1679.36M       140   targets_dict = self.proposal_layer(                                                                  
+7   1536.0M      1679.36M       141   batch_dict, nms_config=self.model_cfg.NMS_CONFIG['TRAIN' if self.training else 'TEST']               
+8                               142   )                                                                                                    
+9   1546.24M     1679.36M       143   if self.training:                                                                                    
+10                              144   targets_dict = batch_dict.get('roi_targets_dict', None)                                              
+11                              145   if targets_dict is None:                                                                             
+12                              146   targets_dict = self.assign_targets(batch_dict)                                                       
+13                              147   batch_dict['rois'] = targets_dict['rois']                                                            
+14                              148   batch_dict['roi_labels'] = targets_dict['roi_labels']                                                
+15                              149   NaN                                                                                                  
+16                              150   # RoI aware pooling                                                                                  
+17  4904.96M     5283.84M       151   pooled_features = self.roi_grid_pool(batch_dict) # (BxN, 6x6x6, C)                                   
+18                              152   NaN                                                                                                  
+19  4710.4M      5283.84M       153   grid_size = self.model_cfg.ROI_GRID_POOL.GRID_SIZE                                                   
+20  4710.4M      5283.84M       154   batch_size_rcnn = pooled_features.shape[0]                                                           
+21  4730.88M     5283.84M       155   pooled_features = pooled_features.permute(0, 2, 1).\                                                 
+22  4730.88M     5283.84M       156   contiguous().view(batch_size_rcnn, -1, grid_size, grid_size, grid_size) # (BxN, C, 6, 6, 6)          
+23                              157   NaN                                                                                                  
+24  4700.16M     5283.84M       158   shared_features = self.shared_fc_layer(pooled_features.view(batch_size_rcnn, -1, 1))                 
+25  4577.28M     5283.84M       159   rcnn_cls = self.cls_layers(shared_features).transpose(1, 2).contiguous().squeeze(dim=1) # (B, 1 or 2)
+26  4577.28M     5283.84M       160   rcnn_reg = self.reg_layers(shared_features).transpose(1, 2).contiguous().squeeze(dim=1) # (B, C)     
+27                              161   NaN                                                                                                  
+28  4700.16M     5283.84M       162   if not self.training:                                                                                
+29  4700.16M     5283.84M       163   batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(                                    
+30  4700.16M     5283.84M       164   batch_size=batch_dict['batch_size'], rois=batch_dict['rois'], cls_preds=rcnn_cls, box_preds=rcnn_reg 
+31                              165   )                                                                                                    
+32  4700.16M     5283.84M       166   batch_dict['batch_cls_preds'] = batch_cls_preds                                                      
+33  4700.16M     5283.84M       167   batch_dict['batch_box_preds'] = batch_box_preds                                                      
+34  4689.92M     5283.84M       168   batch_dict['cls_preds_normalized'] = False                                                           
+35                              169   else:                                                                                                
+36                              170   targets_dict['rcnn_cls'] = rcnn_cls                                                                  
+37                              171   targets_dict['rcnn_reg'] = rcnn_reg                                                                  
+38                              172   NaN                                                                                                  
+39                              173   self.forward_ret_dict = targets_dict                                                                 
+40                              174   NaN                                                                                                  
+41  4689.92M     5283.84M       175   return batch_dict                                                                                    
+INFO:root:>>>>>>>>>>>>>> The runtime for ROI grid pooling in PVRCNNHead is 0.021814823150634766 ms
+INFO:root:
+
+INFO:root:************** Analyzing memory usage of ROI grid pooling **************
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                        code
+0   4689.92M     5283.84M       64    def roi_grid_pool(self, batch_dict):                                                      
+1                               65    """                                                                                       
+2                               66    Args:                                                                                     
+3                               67    batch_dict:                                                                               
+4                               68    batch_size:                                                                               
+5                               69    rois: (B, num_rois, 7 + C)                                                                
+6                               70    point_coords: (num_points, 4) [bs_idx, x, y, z]                                           
+7                               71    point_features: (num_points, C)                                                           
+8                               72    point_cls_scores: (N1 + N2 + N3 + ..., 1)                                                 
+9                               73    point_part_offset: (N1 + N2 + N3 + ..., 3)                                                
+10                              74    Returns:                                                                                  
+11                              75    NaN                                                                                       
+12                              76    """                                                                                       
+13  4689.92M     5283.84M       77    batch_size = batch_dict['batch_size']                                                     
+14  4689.92M     5283.84M       78    rois = batch_dict['rois']                                                                 
+15  4689.92M     5283.84M       79    point_coords = batch_dict['point_coords']                                                 
+16  4689.92M     5283.84M       80    point_features = batch_dict['point_features']                                             
+17                              81    NaN                                                                                       
+18  4689.92M     5283.84M       82    point_features = point_features * batch_dict['point_cls_scores'].view(-1, 1)              
+19                              83    NaN                                                                                       
+20  4689.92M     5283.84M       84    global_roi_grid_points, local_roi_grid_points = self.get_global_grid_points_of_roi(       
+21  4689.92M     5283.84M       85    rois, grid_size=self.model_cfg.ROI_GRID_POOL.GRID_SIZE                                    
+22                              86    ) # (BxN, 6x6x6, 3)                                                                       
+23  4689.92M     5283.84M       87    global_roi_grid_points = global_roi_grid_points.view(batch_size, -1, 3) # (B, Nx6x6x6, 3) 
+24                              88    NaN                                                                                       
+25  4689.92M     5283.84M       89    xyz = point_coords[:, 1:4]                                                                
+26  4689.92M     5283.84M       90    xyz_batch_cnt = xyz.new_zeros(batch_size).int()                                           
+27  4689.92M     5283.84M       91    batch_idx = point_coords[:, 0]                                                            
+28  4689.92M     5283.84M       92    for k in range(batch_size):                                                               
+29  4689.92M     5283.84M       93    xyz_batch_cnt[k] = (batch_idx == k).sum()                                                 
+30                              94    NaN                                                                                       
+31  4689.92M     5283.84M       95    new_xyz = global_roi_grid_points.view(-1, 3)                                              
+32  4689.92M     5283.84M       96    new_xyz_batch_cnt = xyz.new_zeros(batch_size).int().fill_(global_roi_grid_points.shape[1])
+33  4689.92M     5283.84M       97    pooled_points, pooled_features = self.roi_grid_pool_layer(                                
+34  4689.92M     5283.84M       98    xyz=xyz.contiguous(),                                                                     
+35  4689.92M     5283.84M       99    xyz_batch_cnt=xyz_batch_cnt,                                                              
+36  4689.92M     5283.84M       100   new_xyz=new_xyz,                                                                          
+37  4689.92M     5283.84M       101   new_xyz_batch_cnt=new_xyz_batch_cnt,                                                      
+38  8058.88M     8386.56M       102   features=point_features.contiguous(),                                                     
+39                              103   ) # (M1 + M2 ..., C)                                                                      
+40                              104   NaN                                                                                       
+41  7854.08M     8386.56M       105   pooled_features = pooled_features.view(                                                   
+42  7854.08M     8386.56M       106   -1, self.model_cfg.ROI_GRID_POOL.GRID_SIZE ** 3,                                          
+43  7854.08M     8386.56M       107   pooled_features.shape[-1]                                                                 
+44                              108   ) # (BxN, 6x6x6, C)                                                                       
+45  7854.08M     8386.56M       109   return pooled_features                                                                    
+INFO:root:
+
+INFO:root:------------------------------------------------------ Finish profiling ------------------------------------------------------

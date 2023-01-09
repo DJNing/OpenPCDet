@@ -1,0 +1,240 @@
+INFO:root:|---------------------------------------------- The model is PointPillar --------------------------------------------|
+
+INFO:root:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> The runtime of PointPillar is 38.9332160949707 ms.
+INFO:root:>>>> Analyzing the memory usage of this model with the batch size 1 <<<<
+INFO:root:## PointPillar.forward
+
+active_bytes reserved_bytes line code                                                                    
+         all            all                                                                              
+        peak           peak                                                                              
+      67.39M         74.00M    9     def forward(self, batch_dict):                                      
+     542.96M          1.16G   10         for cur_module in self.module_list:                             
+     862.12M          1.16G   11             batch_dict = cur_module(batch_dict)                         
+                              12                                                                         
+     542.96M          1.16G   13         if self.training:                                               
+                              14             loss, tb_dict, disp_dict = self.get_training_loss()         
+                              15                                                                         
+                              16             ret_dict = {                                                
+                              17                 'loss': loss                                            
+                              18             }                                                           
+                              19             return ret_dict, tb_dict, disp_dict                         
+                              20         else:                                                           
+     573.04M          1.16G   21             pred_dicts, recall_dicts = self.post_processing(batch_dict) 
+     542.96M          1.16G   22             return pred_dicts, recall_dicts                             
+
+INFO:root:>>>> Now we analyze the average memory usage of this model <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                         code
+0   12.88M       74.0M          9     def forward(self, batch_dict):                             
+1   491.28M      1187.84M       10    for cur_module in self.module_list:                        
+2   807.0M       1187.84M       11    batch_dict = cur_module(batch_dict)                        
+3                               12    NaN                                                        
+4   491.28M      1187.84M       13    if self.training:                                          
+5                               14    loss, tb_dict, disp_dict = self.get_training_loss()        
+6                               15    NaN                                                        
+7                               16    ret_dict = {                                               
+8                               17    'loss': loss                                               
+9                               18    }                                                          
+10                              19    return ret_dict, tb_dict, disp_dict                        
+11                              20    else:                                                      
+12  502.16M      1187.84M       21    pred_dicts, recall_dicts = self.post_processing(batch_dict)
+13  491.28M      1187.84M       22    return pred_dicts, recall_dicts                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| VFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PillarVFE -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for PillarVFE is 10.524272918701172 ms
+INFO:root:>>>>>>>>>>>>>> There are 2 PFNLayers
+INFO:root:>>>>>>>>>>>>>> The total runtime of all PFNLayers is 5.16200065612793 ms
+INFO:root:>>>>>>>>>>>>>> The average runtime of each PFNLayer is 2.581000328063965 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                                               code
+0   73.03M       258.0M         94    def forward(self, batch_dict, **kwargs):                                                                                         
+1                               95    NaN                                                                                                                              
+2   73.03M       258.0M         96    voxel_features, voxel_num_points, coords = batch_dict['voxels'], batch_dict['voxel_num_points'], batch_dict['voxel_coords']      
+3   73.61M       258.0M         97    points_mean = voxel_features[:, :, :3].sum(dim=1, keepdim=True) / voxel_num_points.type_as(voxel_features).view(-1, 1, 1)        
+4   79.0M        258.0M         98    f_cluster = voxel_features[:, :, :3] - points_mean                                                                               
+5                               99    NaN                                                                                                                              
+6   84.69M       258.0M         100   f_center = torch.zeros_like(voxel_features[:, :, :3])                                                                            
+7   85.95M       258.0M         101   f_center[:, :, 0] = voxel_features[:, :, 0] - (coords[:, 3].to(voxel_features.dtype).unsqueeze(1) * self.voxel_x + self.x_offset)
+8   85.95M       258.0M         102   f_center[:, :, 1] = voxel_features[:, :, 1] - (coords[:, 2].to(voxel_features.dtype).unsqueeze(1) * self.voxel_y + self.y_offset)
+9   85.95M       258.0M         103   f_center[:, :, 2] = voxel_features[:, :, 2] - (coords[:, 1].to(voxel_features.dtype).unsqueeze(1) * self.voxel_z + self.z_offset)
+10                              104   NaN                                                                                                                              
+11  84.69M       258.0M         105   if self.use_absolute_xyz:                                                                                                        
+12  84.69M       258.0M         106   features = [voxel_features, f_cluster, f_center]                                                                                 
+13                              107   else:                                                                                                                            
+14                              108   features = [voxel_features[..., 3:], f_cluster, f_center]                                                                        
+15                              109   NaN                                                                                                                              
+16  84.69M       258.0M         110   if self.with_distance:                                                                                                           
+17                              111   points_dist = torch.norm(voxel_features[:, :, :3], 2, 2, keepdim=True)                                                           
+18                              112   features.append(points_dist)                                                                                                     
+19  105.53M      258.0M         113   features = torch.cat(features, dim=-1)                                                                                           
+20                              114   NaN                                                                                                                              
+21  105.53M      258.0M         115   voxel_count = features.shape[1]                                                                                                  
+22  106.09M      258.0M         116   mask = self.get_paddings_indicator(voxel_num_points, voxel_count, axis=0)                                                        
+23  107.17M      258.0M         117   mask = torch.unsqueeze(mask, -1).type_as(voxel_features)                                                                         
+24  106.69M      258.0M         118   features *= mask                                                                                                                 
+25  612.53M      870.0M         119   for pfn in self.pfn_layers:                                                                                                      
+26  725.35M      870.0M         120   features = pfn(features)                                                                                                         
+27  612.53M      870.0M         121   features = features.squeeze()                                                                                                    
+28  612.53M      870.0M         122   batch_dict['pillar_features'] = features                                                                                         
+29  612.53M      870.0M         123   return batch_dict                                                                                                                
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 3D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a 3d backbone
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Map2Bev Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on PointPillarScatter -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for PointPillarScatter is 4.2572021484375 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                                                 code
+0   606.21M      686.0M         14    def forward(self, batch_dict, **kwargs):                                                                           
+1   606.21M      686.0M         15    pillar_features, coords = batch_dict['pillar_features'], batch_dict['voxel_coords']                                
+2   606.21M      686.0M         16    batch_spatial_features = []                                                                                        
+3   606.12M      686.0M         17    batch_size = coords[:, 0].max().int().item() + 1                                                                   
+4   658.25M      740.0M         18    for batch_idx in range(batch_size):                                                                                
+5   667.65M      686.0M         19    spatial_feature = torch.zeros(                                                                                     
+6   667.65M      686.0M         20    self.num_bev_features,                                                                                             
+7   667.65M      686.0M         21    self.nz * self.nx * self.ny,                                                                                       
+8   667.65M      686.0M         22    dtype=pillar_features.dtype,                                                                                       
+9   664.85M      740.0M         23    device=pillar_features.device)                                                                                     
+10                              24    NaN                                                                                                                
+11  664.83M      740.0M         25    batch_mask = coords[:, 0] == batch_idx                                                                             
+12  664.27M      740.0M         26    this_coords = coords[batch_mask, :]                                                                                
+13  664.27M      740.0M         27    indices = this_coords[:, 1] + this_coords[:, 2] * self.nx + this_coords[:, 3]                                      
+14  664.17M      740.0M         28    indices = indices.type(torch.long)                                                                                 
+15  668.31M      740.0M         29    pillars = pillar_features[batch_mask, :]                                                                           
+16  658.25M      740.0M         30    pillars = pillars.t()                                                                                              
+17  658.25M      740.0M         31    spatial_feature[:, indices] = pillars                                                                              
+18  658.25M      740.0M         32    batch_spatial_features.append(spatial_feature)                                                                     
+19                              33    NaN                                                                                                                
+20  716.89M      794.0M         34    batch_spatial_features = torch.stack(batch_spatial_features, 0)                                                    
+21  655.45M      794.0M         35    batch_spatial_features = batch_spatial_features.view(batch_size, self.num_bev_features * self.nz, self.ny, self.nx)
+22  655.45M      794.0M         36    batch_dict['spatial_features'] = batch_spatial_features                                                            
+23  655.45M      794.0M         37    return batch_dict                                                                                                  
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| PFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a pfe
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 2D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on BaseBEVBackbone -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for BaseBEVBackbone is 15.981912612915039 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                  code
+0   654.4M       740.0M         81    def forward(self, data_dict):                       
+1                               82    """                                                 
+2                               83    Args:                                               
+3                               84    data_dict:                                          
+4                               85    spatial_features                                    
+5                               86    Returns:                                            
+6                               87    """                                                 
+7   654.4M       740.0M         88    spatial_features = data_dict['spatial_features']    
+8   654.4M       740.0M         89    ups = []                                            
+9   654.4M       740.0M         90    ret_dict = {}                                       
+10  654.4M       740.0M         91    x = spatial_features                                
+11  2344.96M     2600.96M       92    for i in range(len(self.blocks)):                   
+12  2140.16M     2263.04M       93    x = self.blocks[i](x)                               
+13                              94    NaN                                                 
+14  2129.92M     2263.04M       95    stride = int(spatial_features.shape[2] / x.shape[2])
+15  2129.92M     2263.04M       96    ret_dict['spatial_features_%dx' % stride] = x       
+16  2129.92M     2263.04M       97    if len(self.deblocks) > 0:                          
+17  2447.36M     2600.96M       98    ups.append(self.deblocks[i](x))                     
+18                              99    else:                                               
+19                              100   ups.append(x)                                       
+20                              101   NaN                                                 
+21  2344.96M     2600.96M       102   if len(ups) > 1:                                    
+22  2662.4M      2928.64M       103   x = torch.cat(ups, dim=1)                           
+23                              104   elif len(ups) == 1:                                 
+24                              105   x = ups[0]                                          
+25                              106   NaN                                                 
+26  2662.4M      2928.64M       107   if len(self.deblocks) > len(self.blocks):           
+27                              108   x = self.deblocks[-1](x)                            
+28                              109   NaN                                                 
+29  2662.4M      2928.64M       110   data_dict['spatial_features_2d'] = x                
+30                              111   NaN                                                 
+31  2662.4M      2928.64M       112   return data_dict                                    
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Dense Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on AnchorHeadSingle -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for AnchorHeadSingle is 4.862070083618164 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                   code
+0   2662.4M      2805.76M       41    def forward(self, data_dict):                                        
+1   2662.4M      2805.76M       42    spatial_features_2d = data_dict['spatial_features_2d']               
+2                               43    NaN                                                                  
+3   2672.64M     2928.64M       44    cls_preds = self.conv_cls(spatial_features_2d)                       
+4   2713.6M      2928.64M       45    box_preds = self.conv_box(spatial_features_2d)                       
+5                               46    NaN                                                                  
+6   2723.84M     2928.64M       47    cls_preds = cls_preds.permute(0, 2, 3, 1).contiguous() # [N, H, W, C]
+7   2744.32M     2928.64M       48    box_preds = box_preds.permute(0, 2, 3, 1).contiguous() # [N, H, W, C]
+8                               49    NaN                                                                  
+9   2713.6M      2928.64M       50    self.forward_ret_dict['cls_preds'] = cls_preds                       
+10  2693.12M     2928.64M       51    self.forward_ret_dict['box_preds'] = box_preds                       
+11                              52    NaN                                                                  
+12  2662.4M      2928.64M       53    if self.conv_dir_cls is not None:                                    
+13  2549.76M     3061.76M       54    dir_cls_preds = self.conv_dir_cls(spatial_features_2d)               
+14  2682.88M     3061.76M       55    dir_cls_preds = dir_cls_preds.permute(0, 2, 3, 1).contiguous()       
+15  2672.64M     3061.76M       56    self.forward_ret_dict['dir_cls_preds'] = dir_cls_preds               
+16                              57    else:                                                                
+17                              58    dir_cls_preds = None                                                 
+18                              59    NaN                                                                  
+19  2662.4M      3061.76M       60    if self.training:                                                    
+20                              61    targets_dict = self.assign_targets(                                  
+21                              62    gt_boxes=data_dict['gt_boxes']                                       
+22                              63    )                                                                    
+23                              64    self.forward_ret_dict.update(targets_dict)                           
+24                              65    NaN                                                                  
+25  2662.4M      3061.76M       66    if not self.training or self.predict_boxes_when_training:            
+26  2662.4M      3061.76M       67    batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(    
+27  2662.4M      3061.76M       68    batch_size=data_dict['batch_size'],                                  
+28  2795.52M     3061.76M       69    cls_preds=cls_preds, box_preds=box_preds, dir_cls_preds=dir_cls_preds
+29                              70    )                                                                    
+30  2754.56M     3061.76M       71    data_dict['batch_cls_preds'] = batch_cls_preds                       
+31  2754.56M     3061.76M       72    data_dict['batch_box_preds'] = batch_box_preds                       
+32  2754.56M     3061.76M       73    data_dict['cls_preds_normalized'] = False                            
+33                              74    NaN                                                                  
+34  2754.56M     3061.76M       75    return data_dict                                                     
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Point Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a point head
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| ROI Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a ROI head
+INFO:root:
+
+INFO:root:------------------------------------------------------ Finish profiling ------------------------------------------------------

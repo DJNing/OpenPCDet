@@ -1,0 +1,280 @@
+INFO:root:|---------------------------------------------- The model is SECONDNet --------------------------------------------|
+
+INFO:root:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> The runtime of SECONDNet is 49.91142272949219 ms.
+INFO:root:>>>> Analyzing the memory usage of this model with the batch size 1 <<<<
+INFO:root:## SECONDNet.forward
+
+active_bytes reserved_bytes line code                                                                    
+         all            all                                                                              
+        peak           peak                                                                              
+      40.40M         52.00M    9     def forward(self, batch_dict):                                      
+     294.44M        638.00M   10         for cur_module in self.module_list:                             
+     415.66M        638.00M   11             batch_dict = cur_module(batch_dict)                         
+                              12                                                                         
+     294.44M        638.00M   13         if self.training:                                               
+                              14             loss, tb_dict, disp_dict = self.get_training_loss()         
+                              15                                                                         
+                              16             ret_dict = {                                                
+                              17                 'loss': loss                                            
+                              18             }                                                           
+                              19             return ret_dict, tb_dict, disp_dict                         
+                              20         else:                                                           
+     299.96M        638.00M   21             pred_dicts, recall_dicts = self.post_processing(batch_dict) 
+     294.44M        638.00M   22             return pred_dicts, recall_dicts                             
+
+INFO:root:>>>> Now we analyze the average memory usage of this model <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                         code
+0   12.81M       52.0M          9     def forward(self, batch_dict):                             
+1   268.31M      638.0M         10    for cur_module in self.module_list:                        
+2   307.15M      638.0M         11    batch_dict = cur_module(batch_dict)                        
+3                               12    NaN                                                        
+4   268.31M      638.0M         13    if self.training:                                          
+5                               14    loss, tb_dict, disp_dict = self.get_training_loss()        
+6                               15    NaN                                                        
+7                               16    ret_dict = {                                               
+8                               17    'loss': loss                                               
+9                               18    }                                                          
+10                              19    return ret_dict, tb_dict, disp_dict                        
+11                              20    else:                                                      
+12  269.42M      638.0M         21    pred_dicts, recall_dicts = self.post_processing(batch_dict)
+13  268.31M      638.0M         22    return pred_dicts, recall_dicts                            
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| VFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on MeanVFE -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for MeanVFE is 1.0516643524169922 ms
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                         code
+0   25.08M       84.0M          14    def forward(self, batch_dict, **kwargs):                                                   
+1                               15    """                                                                                        
+2                               16    Args:                                                                                      
+3                               17    batch_dict:                                                                                
+4                               18    voxels: (num_voxels, max_points_per_voxel, C)                                              
+5                               19    voxel_num_points: optional (num_voxels)                                                    
+6                               20    **kwargs:                                                                                  
+7                               21    NaN                                                                                        
+8                               22    Returns:                                                                                   
+9                               23    vfe_features: (num_voxels, C)                                                              
+10                              24    """                                                                                        
+11  25.08M       84.0M          25    voxel_features, voxel_num_points = batch_dict['voxels'], batch_dict['voxel_num_points']    
+12  26.53M       84.0M          26    points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)                            
+13  26.82M       84.0M          27    normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
+14  28.27M       84.0M          28    points_mean = points_mean / normalizer                                                     
+15  26.81M       84.0M          29    batch_dict['voxel_features'] = points_mean.contiguous()                                    
+16                              30    NaN                                                                                        
+17  26.81M       84.0M          31    return batch_dict                                                                          
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 3D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on VoxelBackBone8x -----------------------
+INFO:root:>>>>>>>>>>>>>> The run time for VoxelBackBone8x is 38.652896881103516 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv1 in VoxelBackBone8x is 0.8485317230224609 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv2 in VoxelBackBone8x is 4.131078720092773 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv3 in VoxelBackBone8x is 4.094600677490234 ms
+INFO:root:>>>>>>>>>>>>>> The runtime for conv4 in VoxelBackBone8x is 2.405881881713867 ms
+INFO:root:>>>>>>>>>>>>>> The average running time of the combined convolutinal blocks is 8.295893669128418 ms 
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                     code
+0   26.52M       84.0M          128   def forward(self, batch_dict):                                                         
+1                               129   """                                                                                    
+2                               130   Args:                                                                                  
+3                               131   batch_dict:                                                                            
+4                               132   batch_size: int                                                                        
+5                               133   vfe_features: (num_voxels, C)                                                          
+6                               134   voxel_coords: (num_voxels, 4), [batch_idx, z_idx, y_idx, x_idx]                        
+7                               135   Returns:                                                                               
+8                               136   batch_dict:                                                                            
+9                               137   encoded_spconv_tensor: sparse tensor                                                   
+10                              138   """                                                                                    
+11  26.52M       84.0M          139   voxel_features, voxel_coords = batch_dict['voxel_features'], batch_dict['voxel_coords']
+12  26.52M       84.0M          140   batch_size = batch_dict['batch_size']                                                  
+13  26.52M       84.0M          141   input_sp_tensor = spconv.SparseConvTensor(                                             
+14  26.52M       84.0M          142   features=voxel_features,                                                               
+15  27.98M       84.0M          143   indices=voxel_coords.int(),                                                            
+16  27.98M       84.0M          144   spatial_shape=self.sparse_shape,                                                       
+17  27.98M       84.0M          145   batch_size=batch_size                                                                  
+18                              146   )                                                                                      
+19                              147   NaN                                                                                    
+20  50.34M       86.0M          148   x = self.conv_input(input_sp_tensor)                                                   
+21                              149   NaN                                                                                    
+22  59.64M       106.0M         150   x_conv1 = self.conv1(x)                                                                
+23  184.65M      246.0M         151   x_conv2 = self.conv2(x_conv1)                                                          
+24  303.85M      386.0M         152   x_conv3 = self.conv3(x_conv2)                                                          
+25  345.17M      426.0M         153   x_conv4 = self.conv4(x_conv3)                                                          
+26                              154   NaN                                                                                    
+27                              155   # for detection head                                                                   
+28                              156   # [200, 176, 5] -> [200, 176, 2]                                                       
+29  373.94M      452.0M         157   out = self.conv_out(x_conv4)                                                           
+30                              158   NaN                                                                                    
+31  363.23M      452.0M         159   batch_dict.update({                                                                    
+32  363.23M      452.0M         160   'encoded_spconv_tensor': out,                                                          
+33  363.23M      452.0M         161   'encoded_spconv_tensor_stride': 8                                                      
+34                              162   })                                                                                     
+35  363.23M      452.0M         163   batch_dict.update({                                                                    
+36  363.23M      452.0M         164   'multi_scale_3d_features': {                                                           
+37  363.23M      452.0M         165   'x_conv1': x_conv1,                                                                    
+38  363.23M      452.0M         166   'x_conv2': x_conv2,                                                                    
+39  363.23M      452.0M         167   'x_conv3': x_conv3,                                                                    
+40  363.23M      452.0M         168   'x_conv4': x_conv4,                                                                    
+41                              169   }                                                                                      
+42                              170   })                                                                                     
+43  363.23M      452.0M         171   batch_dict.update({                                                                    
+44  363.23M      452.0M         172   'multi_scale_3d_strides': {                                                            
+45  363.23M      452.0M         173   'x_conv1': 1,                                                                          
+46  363.23M      452.0M         174   'x_conv2': 2,                                                                          
+47  363.23M      452.0M         175   'x_conv3': 4,                                                                          
+48  363.23M      452.0M         176   'x_conv4': 8,                                                                          
+49                              177   }                                                                                      
+50                              178   })                                                                                     
+51                              179   NaN                                                                                    
+52  363.23M      452.0M         180   return batch_dict                                                                      
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Map2Bev Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on HeightCompression -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for HeightCompression is 2.341032028198242 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                                code
+0   363.23M      440.0M         10    def forward(self, batch_dict):                                                    
+1                               11    """                                                                               
+2                               12    Args:                                                                             
+3                               13    batch_dict:                                                                       
+4                               14    encoded_spconv_tensor: sparse tensor                                              
+5                               15    Returns:                                                                          
+6                               16    batch_dict:                                                                       
+7                               17    spatial_features:                                                                 
+8                               18    NaN                                                                               
+9                               19    """                                                                               
+10  363.23M      440.0M         20    encoded_spconv_tensor = batch_dict['encoded_spconv_tensor']                       
+11  434.97M      512.0M         21    spatial_features = encoded_spconv_tensor.dense()                                  
+12  399.48M      512.0M         22    N, C, D, H, W = spatial_features.shape                                            
+13  399.48M      512.0M         23    spatial_features = spatial_features.view(N, C * D, H, W)                          
+14  399.48M      512.0M         24    batch_dict['spatial_features'] = spatial_features                                 
+15  399.48M      512.0M         25    batch_dict['spatial_features_stride'] = batch_dict['encoded_spconv_tensor_stride']
+16  399.48M      512.0M         26    return batch_dict                                                                 
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| PFE Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a pfe
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| 2D backbone Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on BaseBEVBackbone -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for BaseBEVBackbone is 12.184619903564453 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                  code
+0   399.48M      476.0M         81    def forward(self, data_dict):                       
+1                               82    """                                                 
+2                               83    Args:                                               
+3                               84    data_dict:                                          
+4                               85    spatial_features                                    
+5                               86    Returns:                                            
+6                               87    """                                                 
+7   399.48M      476.0M         88    spatial_features = data_dict['spatial_features']    
+8   399.48M      476.0M         89    ups = []                                            
+9   399.48M      476.0M         90    ret_dict = {}                                       
+10  399.48M      476.0M         91    x = spatial_features                                
+11  902.37M      1075.2M        92    for i in range(len(self.blocks)):                   
+12  839.89M      960.0M         93    x = self.blocks[i](x)                               
+13                              94    NaN                                                 
+14  828.04M      960.0M         95    stride = int(spatial_features.shape[2] / x.shape[2])
+15  828.04M      960.0M         96    ret_dict['spatial_features_%dx' % stride] = x       
+16  828.04M      960.0M         97    if len(self.deblocks) > 0:                          
+17  939.53M      1075.2M        98    ups.append(self.deblocks[i](x))                     
+18                              99    else:                                               
+19                              100   ups.append(x)                                       
+20                              101   NaN                                                 
+21  902.37M      1075.2M        102   if len(ups) > 1:                                    
+22  965.49M      1146.88M       103   x = torch.cat(ups, dim=1)                           
+23                              104   elif len(ups) == 1:                                 
+24                              105   x = ups[0]                                          
+25                              106   NaN                                                 
+26  965.49M      1146.88M       107   if len(self.deblocks) > len(self.blocks):           
+27                              108   x = self.deblocks[-1](x)                            
+28                              109   NaN                                                 
+29  965.49M      1146.88M       110   data_dict['spatial_features_2d'] = x                
+30                              111   NaN                                                 
+31  965.49M      1146.88M       112   return data_dict                                    
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Dense Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:----------------------- Analyzing on AnchorHeadSingle -----------------------
+INFO:root:>>>>>>>>>>>>>> The runtime for AnchorHeadSingle is 5.0029754638671875 ms
+INFO:root:
+
+INFO:root:>>>> Now we analyze its memory usage <<<<
+INFO:root:
+   active_bytes reserved_bytes  line                                                                   code
+0   965.49M      1085.44M       41    def forward(self, data_dict):                                        
+1   965.49M      1085.44M       42    spatial_features_2d = data_dict['spatial_features_2d']               
+2                               43    NaN                                                                  
+3   972.8M       1218.56M       44    cls_preds = self.conv_cls(spatial_features_2d)                       
+4   849.92M      1218.56M       45    box_preds = self.conv_box(spatial_features_2d)                       
+5                               46    NaN                                                                  
+6   974.82M      1218.56M       47    cls_preds = cls_preds.permute(0, 2, 3, 1).contiguous() # [N, H, W, C]
+7   982.05M      1218.56M       48    box_preds = box_preds.permute(0, 2, 3, 1).contiguous() # [N, H, W, C]
+8                               49    NaN                                                                  
+9   977.47M      1218.56M       50    self.forward_ret_dict['cls_preds'] = cls_preds                       
+10  969.66M      1218.56M       51    self.forward_ret_dict['box_preds'] = box_preds                       
+11                              52    NaN                                                                  
+12  965.08M      1218.56M       53    if self.conv_dir_cls is not None:                                    
+13  973.7M       1218.56M       54    dir_cls_preds = self.conv_dir_cls(spatial_features_2d)               
+14  972.07M      1218.56M       55    dir_cls_preds = dir_cls_preds.permute(0, 2, 3, 1).contiguous()       
+15  973.7M       1218.56M       56    self.forward_ret_dict['dir_cls_preds'] = dir_cls_preds               
+16                              57    else:                                                                
+17                              58    dir_cls_preds = None                                                 
+18                              59    NaN                                                                  
+19  965.23M      1218.56M       60    if self.training:                                                    
+20                              61    targets_dict = self.assign_targets(                                  
+21                              62    gt_boxes=data_dict['gt_boxes']                                       
+22                              63    )                                                                    
+23                              64    self.forward_ret_dict.update(targets_dict)                           
+24                              65    NaN                                                                  
+25  965.23M      1218.56M       66    if not self.training or self.predict_boxes_when_training:            
+26  965.23M      1218.56M       67    batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(    
+27  965.23M      1218.56M       68    batch_size=data_dict['batch_size'],                                  
+28  990.04M      1228.8M        69    cls_preds=cls_preds, box_preds=box_preds, dir_cls_preds=dir_cls_preds
+29                              70    )                                                                    
+30  980.89M      1228.8M        71    data_dict['batch_cls_preds'] = batch_cls_preds                       
+31  980.89M      1228.8M        72    data_dict['batch_box_preds'] = batch_box_preds                       
+32  980.89M      1228.8M        73    data_dict['cls_preds_normalized'] = False                            
+33                              74    NaN                                                                  
+34  980.89M      1228.8M        75    return data_dict                                                     
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| Point Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a point head
+INFO:root:
+
+INFO:root:|||||||||||||||||||||||||||||||||||| ROI Head Part ||||||||||||||||||||||||||||||||||||
+INFO:root:
+
+INFO:root:This model does not have a ROI head
+INFO:root:
+
+INFO:root:------------------------------------------------------ Finish profiling ------------------------------------------------------
